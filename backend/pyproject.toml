@@ -1,0 +1,73 @@
+[project]
+name = "citebase-backend"
+version = "0.1.0"
+description = "CiteBase API, worker and RAG engine"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",                 # HTTP API framework
+    "uvicorn[standard]>=0.30",        # ASGI server
+    "pydantic>=2.9",                  # validation
+    "pydantic-settings>=2.6",         # typed configuration from env
+    "sqlalchemy[asyncio]>=2.0.36",    # ORM and query builder
+    "alembic>=1.14",                  # migrations
+    "psycopg[binary]>=3.2",           # Postgres driver (sync for migrations, async for app)
+    "pyjwt>=2.9",                     # access tokens
+    "argon2-cffi>=23.1",              # Argon2id password hashing
+    "email-validator>=2.2",           # EmailStr validation
+    "aiosmtplib>=3.0",                # async SMTP for transactional email
+    "structlog>=24.4",                # structured logging with redaction
+    "python-multipart>=0.0.18",       # form and file uploads (Phase 2)
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",          # test runner
+    "pytest-asyncio>=0.24", # async tests
+    "httpx>=0.27",          # ASGI test client
+    "ruff>=0.8",            # lint and format
+    "mypy>=1.13",           # type checking
+    "pip-audit>=2.7",       # dependency vulnerability scan
+]
+
+[tool.uv]
+package = false
+# Supply-chain hygiene: resolve only releases published before this date.
+exclude-newer = "2026-10-31T00:00:00Z"
+# Security fixes published after the cutoff are allowed per package (found by pip-audit).
+exclude-newer-package = { dnspython = "2026-11-05T00:00:00Z" }
+constraint-dependencies = [
+    "dnspython>=2.9.2",  # CVE-2026-128089 (via email-validator)
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF", "SIM", "PL"]
+ignore = ["PLR0913", "PLR2004", "S101"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["alembic"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S107", "PLR0915"]
+"app/services/emails.py" = ["E501"]  # inline-styled HTML email markup
+"alembic/**" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/versions"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra -p no:cacheprovider"

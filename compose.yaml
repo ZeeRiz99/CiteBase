@@ -1,0 +1,99 @@
+# Production-like stack. compose.override.yaml (loaded automatically) adds dev hot reload.
+name: citebase
+
+x-backend-env: &backend-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  PRODUCT_NAME: ${PRODUCT_NAME:-CiteBase}
+  PRODUCT_TAGLINE: ${PRODUCT_TAGLINE:-Ask your documents. Get answers you can verify.}
+  APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+  DATABASE_URL: postgresql+psycopg://citebase_app:${CITEBASE_APP_PASSWORD}@postgres:5432/citebase
+  MIGRATIONS_DATABASE_URL: postgresql+psycopg://citebase_owner:${CITEBASE_OWNER_PASSWORD}@postgres:5432/citebase
+  SECRET_KEY: ${SECRET_KEY}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-smtp}
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  EMAIL_FROM: ${EMAIL_FROM:-CiteBase <no-reply@citebase.local>}
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg17-bookworm
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      CITEBASE_OWNER_PASSWORD: ${CITEBASE_OWNER_PASSWORD}
+      CITEBASE_APP_PASSWORD: ${CITEBASE_APP_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5433:5432"   # 5432 is taken by the native WSL Postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d citebase"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    mem_limit: 512m
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:8025:8025"   # web UI for caught emails
+    mem_limit: 64m
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ./backend, target: prod }
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: { context: ./backend, target: prod }
+    environment: *backend-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+    restart: unless-stopped
+
+  worker:
+    build: { context: ./backend, target: prod }
+    command: ["python", "-m", "app.worker"]
+    environment: *backend-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 384m
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      target: prod
+      args:
+        NEXT_PUBLIC_PRODUCT_NAME: ${PRODUCT_NAME:-CiteBase}
+        NEXT_PUBLIC_PRODUCT_TAGLINE: ${PRODUCT_TAGLINE:-Ask your documents. Get answers you can verify.}
+    depends_on:
+      api: { condition: service_healthy }
+    mem_limit: 512m
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [api, web]
+    mem_limit: 64m
+    restart: unless-stopped
+
+volumes:
+  pgdata:
