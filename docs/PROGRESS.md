@@ -19,7 +19,7 @@
 
 ## Assumptions in force (Phase 0 questions not yet answered)
 
-1. Repo stays on the Windows drive; dev containers poll for file changes.
+1. Repo lives at `D:\Projects\citebase` (moved from `C:\Users\dell\Projects` on 2026-11-14); dev containers poll for file changes.
 2. English-first keyword search (configurable per workspace).
 3. One deployment per client; branding through `.env` and web build arguments.
 4. LLM keys not needed until Phase 3.

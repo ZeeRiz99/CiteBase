@@ -20,7 +20,7 @@ Inspected on 2026-11-14.
 | Git | 2.55.0, global config present | Repo initialized in Phase 0 |
 | Existing work | No CiteBase or RAG project found. `Desktop` has an unrelated calculator script; `Documents/Codex` is unrelated | Nothing to reuse; greenfield |
 
-Project location for Phase 0: `C:\Users\dell\Projects\citebase`. I recommend moving it into the WSL filesystem before Phase 1 (Question 1 in §12).
+Project location for Phase 0: `C:\Users\dell\Projects\citebase`, moved to **`D:\Projects\citebase`** on 2026-11-14 after Phase 1 (the user's projects folder). I recommended the WSL filesystem for faster hot reload (Question 1 in §13).
 
 ---
 
