@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Phase 1 (Foundation): complete, awaiting approval.** Next: Phase 2 (Documents).
+**Phase 1 (Foundation): approved and closed on 2026-11-14** (merged to `main`, tag `phase-1`). Phase 2 (Documents) has not started; it begins when the user says go.
 
 ## Completed
 
@@ -28,6 +28,7 @@
 
 - **CI has not run on GitHub yet**: there is no remote. The workflow runs the same commands that pass locally; confirm it is green after the first push.
 - WSL idle shutdown is disabled in `%USERPROFILE%\.wslconfig` (`vmIdleTimeout=-1`, `instanceIdleTimeout=-1`) so the stack stays reachable; use `wsl --shutdown` to free memory.
+- Dev and production images use separate names (`citebase-backend:dev`, `citebase-web:dev` vs the default names); a production build once overwrote the dev web tag (fixed in `61db251`).
 - Dev hot reload runs through polling on a Windows bind mount; slower than native. Moving the repo into the WSL filesystem would fix it (Phase 0 question 1).
 - A Content-Security-Policy header is not set yet (Next dev needs inline scripts and eval); add a production CSP in Phase 5.
 - The login rate limiter is in-process (correct for a single API instance; Redis in V2).
