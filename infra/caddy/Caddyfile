@@ -1,0 +1,31 @@
+{
+	admin off
+	auto_https off
+}
+
+# One origin for the browser: the web app at /, the API at /api.
+# Production: replace ":80" with your domain to get automatic HTTPS.
+:80 {
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	handle /api/* {
+		request_body {
+			max_size 60MB
+		}
+		# flush_interval -1 streams Server-Sent Events without buffering.
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy web:3000
+	}
+}

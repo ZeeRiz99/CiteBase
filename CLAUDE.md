@@ -19,7 +19,9 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 
 - Windows 11, PowerShell 5.1; **7.8 GB RAM**, i5-8365U, no GPU. Keep the stack lean.
 - WSL2 Ubuntu 26.04 (user `dell`). Native Postgres 18 runs in WSL on :5432; leave it alone. **Compose Postgres uses host port 5433.**
-- Docker Engine to be installed inside WSL (not Docker Desktop). Containers use Python 3.12. Host Node 24.
+- Docker Engine 29 + Compose 2.40 installed inside WSL (not Docker Desktop); `.wslconfig` gives WSL 5 GB. Containers use Python 3.12 and Node 24.
+- Repo lives on the Windows drive (`C:\Users\dell\Projects\citebase`); dev containers use polling file watchers.
+- Assumed (user did not answer Phase 0 questions): English-first FTS, one deployment per client (branding via env and build args), no LLM keys needed until Phase 3.
 
 ## Architecture decisions (approved list grows at each gate)
 
@@ -30,9 +32,19 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 - **No AGPL dependencies** (no PyMuPDF). Licenses recorded in `docs/THIRD_PARTY.md`.
 - **Embeddings:** provider interface. Default local model `intfloat/multilingual-e5-small` (MIT, 384d, 512-token cap); bge-m3 optional on bigger servers. Profiles live in the `embedding_profiles` table; the workspace references one. Vectors live in `chunk_embeddings(chunk_id, profile_id)` with one partial HNSW index per profile. A model change means blue/green re-embed, never mixed vectors.
 - **LLM:** one interface with Gemini, OpenAI, Anthropic and fake adapters. Model names in config only. Separate cheap model for rewriting and suggestions.
-- **Jobs:** `ingestion_jobs` claimed with `FOR UPDATE SKIP LOCKED`, LISTEN/NOTIFY wake-up, heartbeats, backoff. Redis in V2.
+- **Jobs:** one generic `jobs` table (not under RLS; handlers set tenant context), claimed with `FOR UPDATE SKIP LOCKED`, 1 s polling, stale-lock recovery, exponential backoff. Emails go through it. Redis in V2.
 - **Events:** transactional outbox `domain_events` (document.indexed, document.failed, question.unanswered, feedback.received). V3 webhooks consume it.
 - **Storage:** interface; local disk now, S3/MinIO in V2. Random storage keys.
+
+## How to work in this repo (learned in Phase 1)
+
+- Run everything through Docker inside WSL. From PowerShell, multi-line `wsl bash -c` quoting breaks; put shell scripts in the scratchpad and run `wsl bash <script>`.
+- Backend gate: `docker compose run --rm --no-deps api sh -c "ruff check . && ruff format --check . && mypy app && alembic check && pytest -q"`. The container user cannot write to the bind mount: run `ruff format` / `--fix` with `-u root`.
+- Frontend: generate or modify `package-lock.json` only inside a Linux Node container (avoids npm's cross-platform optional-dependency bug). `npm_config_before=2026-10-31T00:00:00Z`.
+- **Next.js 16 differs from training data:** read `frontend/node_modules/next/dist/docs/` before using an API. `middleware` is now `proxy.ts`; `cacheComponents` is on (wrap `useSearchParams` users in `<Suspense>`).
+- Dependency cutoff 2026-10-31 (uv `exclude-newer`, npm `before`). Security fixes are allowed per package with a comment.
+- Request-scoped DB sessions must be opened and closed in one generator (`api/deps.get_db`). A nested generator leaked an open transaction on errors (caught by tests).
+- Hand-written migrations: keep naming identical to `models/base.NAMING_CONVENTION`; `alembic check` must report no drift.
 
 ## Multi-tenancy and security (non-negotiable)
 

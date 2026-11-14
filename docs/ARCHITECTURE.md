@@ -599,7 +599,24 @@ docker run --rm hello-world && docker compose version
 
 ---
 
-## 12. Questions that change the design
+## 12. Decisions made during Phase 1 (supersede the text above where they differ)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Job queue table | One generic **`jobs`** table (`job_type`, `payload`) instead of `ingestion_jobs`. Phase 1 uses it for emails; Phase 2 adds `ingest`, `rechunk` and so on | One queue, one worker loop, one retry policy |
+| Job queue and RLS | `jobs` is **not** under RLS. It holds ids only, and handlers set the tenant context before touching tenant data | The worker must claim jobs across all workspaces |
+| Worker wake-up | **1-second polling** on a partial index, not LISTEN/NOTIFY | Simpler and robust. The idle cost is negligible. LISTEN/NOTIFY can be added later without schema changes |
+| Email | Sent by the worker (`send_email` job), with retries. Payloads holding one-time links are wiped once sent | Email delivery never blocks or fails a request |
+| Tenant context | `set_config('app.workspace_id', …, is_local => true)`, re-applied at the start of every transaction by a SQLAlchemy `after_begin` hook | Survives commits within a request. It cannot leak through the pool (tested) |
+| Refresh races | A rotated refresh token reused within **20 s** is treated as a two-tab race (401 `refresh_race`, nothing revoked). After that it is treated as theft and the family is revoked | Avoids logging users out when two tabs refresh at once |
+| Session marker | `cb_session=1` cookie (not secret, readable by JS) for early redirects. A failed refresh clears all auth cookies | Prevents redirect loops between `/login` and `/dashboard` |
+| Next.js 16 | `proxy.ts` (the renamed `middleware`), `cacheComponents` on, Tailwind through `@tailwindcss/turbopack`. Docs ship in `node_modules/next/dist/docs` | Verified against the bundled docs, not memory |
+| Branding in the web app | `PRODUCT_NAME` is passed to the web build as `NEXT_PUBLIC_PRODUCT_NAME` (a build argument) | Prerendered pages would otherwise freeze runtime values. Branding is per deployment |
+| Dependency cutoff | uv `exclude-newer` and npm `before` set to **2026-10-31**. Security fixes are allowed per package (dnspython 2.9.2 for CVE-2026-128089) | Avoids brand-new releases; still patches known vulnerabilities |
+| Images | `pgvector/pgvector:0.8.6-pg17-bookworm`, `python:3.12-slim-bookworm`, `node:24-bookworm-slim`, `caddy:2.10-alpine`, `axllent/mailpit:v1.27` | Pinned tags, all published before the cutoff |
+| Workspace embedding profile | The `embedding_profiles` table and `workspaces.embedding_profile_id` arrive with the Phase 3 migration | Not needed until embeddings exist |
+
+## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*
 2. **Languages.** Will early clients need non-English documents or questions (for example Urdu or Arabic)? If yes, the default workspace FTS config becomes `simple` with multilingual handling, and the eval set gains non-English questions. If English-first, I use `english` stemming, which is better for English recall.
