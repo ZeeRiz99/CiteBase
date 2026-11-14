@@ -23,12 +23,16 @@ x-dev-backend: &dev-backend
     RUFF_CACHE_DIR: /tmp/ruff-cache
     MYPY_CACHE_DIR: /tmp/mypy-cache
 
+# Dev images get their own names, so a production build (`-f compose.yaml build`) can never
+# replace the image a dev container runs (they share no tags).
 services:
   migrate:
     <<: *dev-backend
+    image: citebase-backend:dev
 
   api:
     <<: *dev-backend
+    image: citebase-backend:dev
     command:
       - uvicorn
       - app.main:create_app
@@ -42,9 +46,11 @@ services:
 
   worker:
     <<: *dev-backend
+    image: citebase-backend:dev
     command: ["watchfiles", "--filter", "python", "python -m app.worker", "app"]
 
   web:
+    image: citebase-web:dev
     build: { context: ./frontend, target: dev }
     command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
     volumes:
