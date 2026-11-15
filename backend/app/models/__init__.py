@@ -7,6 +7,7 @@ from app.models.document import (
     DocumentStatus,
     DocumentVersion,
 )
+from app.models.embedding import ChunkEmbedding, EmbeddingProfileRow
 from app.models.system import AuditLog, DomainEvent, Job, JobStatus
 from app.models.user import AuthSession, AuthToken, TokenPurpose, User
 from app.models.workspace import ROLE_RANK, Collection, Membership, Role, Workspace
@@ -19,12 +20,14 @@ __all__ = [
     "AuthToken",
     "Base",
     "Chunk",
+    "ChunkEmbedding",
     "Collection",
     "Document",
     "DocumentPage",
     "DocumentStatus",
     "DocumentVersion",
     "DomainEvent",
+    "EmbeddingProfileRow",
     "Job",
     "JobStatus",
     "Membership",

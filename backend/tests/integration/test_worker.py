@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
+import httpx
 from fastapi import FastAPI
 from sqlalchemy import select, text
 
@@ -50,6 +51,7 @@ def _ctx(app: FastAPI, settings: Settings, sender: Any) -> WorkerContext:
         sessionmaker=app.state.sessionmaker,
         email_sender=sender,
         storage=app.state.storage,
+        http=httpx.AsyncClient(),
     )
 
 

@@ -16,6 +16,16 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# Per-profile partial HNSW indexes are expression indexes defined only in migrations
+# (autogenerate cannot compare them); keep them out of `alembic check`.
+_MIGRATION_ONLY_INDEX_PREFIXES = ("ix_chunk_embeddings_hnsw_",)
+
+
+def include_object(
+    obj: object, name: str | None, type_: str, reflected: bool, compare_to: object
+) -> bool:
+    return not (type_ == "index" and name and name.startswith(_MIGRATION_ONLY_INDEX_PREFIXES))
+
 
 def _database_url() -> str:
     url = config.attributes.get("database_url") or os.environ.get("MIGRATIONS_DATABASE_URL")
@@ -33,7 +43,9 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     engine = create_engine(_database_url(), poolclass=pool.NullPool)
     with engine.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, target_metadata=target_metadata, include_object=include_object
+        )
         with context.begin_transaction():
             context.run_migrations()
     engine.dispose()

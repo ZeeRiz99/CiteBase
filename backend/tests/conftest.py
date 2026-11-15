@@ -81,6 +81,12 @@ def settings(tmp_path: Path) -> Settings:
         app_base_url="http://testserver",
         storage_dir=str(tmp_path / "storage"),
         extraction_timeout_seconds=60,
+        # Deterministic, offline AI providers: tests never call real APIs or spend money.
+        embedding_backend="fake",
+        llm_backend="fake",
+        gemini_api_key=None,
+        openai_api_key=None,
+        anthropic_api_key=None,
     )
 
 
@@ -181,6 +187,7 @@ class Mailbox:
             sessionmaker=app.state.sessionmaker,
             email_sender=self.sender,
             storage=app.state.storage,
+            http=httpx.AsyncClient(),
         )
 
     async def drain(self) -> int:

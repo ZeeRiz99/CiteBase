@@ -9,6 +9,7 @@ import signal
 import socket
 import time
 
+import httpx
 import structlog
 
 from app.core.config import Settings, get_settings
@@ -62,11 +63,13 @@ async def run_once(ctx: WorkerContext, wid: str) -> bool:
 
 async def run_forever(settings: Settings) -> None:
     engine = create_engine(settings)
+    http = httpx.AsyncClient(timeout=settings.llm_timeout_seconds)
     ctx = WorkerContext(
         settings=settings,
         sessionmaker=create_sessionmaker(engine),
         email_sender=build_email_sender(settings),
         storage=build_storage(settings),
+        http=http,
     )
     wid = worker_id()
     stop = asyncio.Event()
@@ -92,6 +95,7 @@ async def run_forever(settings: Settings) -> None:
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(stop.wait(), timeout=settings.worker_poll_seconds)
     finally:
+        await http.aclose()
         await engine.dispose()
         log.info("worker_stopped", worker=wid)
 

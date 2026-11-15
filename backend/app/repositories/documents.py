@@ -13,7 +13,15 @@ from sqlalchemy.orm import aliased
 from app.db.ids import uuid7
 from app.ingestion.chunking import ChunkDraft, PageText
 from app.ingestion.extractors.base import HEADING_SEPARATOR
-from app.models import IN_PROGRESS, Chunk, Document, DocumentPage, DocumentStatus, DocumentVersion
+from app.models import (
+    IN_PROGRESS,
+    Chunk,
+    ChunkEmbedding,
+    Document,
+    DocumentPage,
+    DocumentStatus,
+    DocumentVersion,
+)
 
 StatusGroup = Literal["processing", "indexed", "attention"]
 _GROUPS: dict[str, set[DocumentStatus]] = {
@@ -187,14 +195,16 @@ async def replace_chunks(
     version: DocumentVersion,
     drafts: Sequence[ChunkDraft],
     fts_config: str,
-) -> None:
+) -> list[uuid.UUID]:
+    """Replace this version's chunks; returns the new chunk ids in draft order."""
     await db.execute(delete(Chunk).where(Chunk.document_version_id == version.id))
+    ids = [uuid7() for _ in drafts]
     if drafts:
         await db.execute(
             insert(Chunk),
             [
                 {
-                    "id": uuid7(),
+                    "id": chunk_id,
                     "workspace_id": document.workspace_id,
                     "document_id": document.id,
                     "document_version_id": version.id,
@@ -209,7 +219,7 @@ async def replace_chunks(
                     "token_count": d.token_count,
                     "content_hash": d.content_hash,
                 }
-                for d in drafts
+                for chunk_id, d in zip(ids, drafts, strict=True)
             ],
         )
     # Keyword index: section titles weigh more than body text.
@@ -222,6 +232,47 @@ async def replace_chunks(
         ),
         {"cfg": fts_config, "vid": version.id},
     )
+    return ids
+
+
+async def cached_embeddings(
+    db: AsyncSession, workspace_id: uuid.UUID, profile_id: int, hashes: Sequence[str]
+) -> dict[str, list[float]]:
+    """Existing vectors for identical chunk text (same workspace and profile)."""
+    if not hashes:
+        return {}
+    rows = await db.execute(
+        select(ChunkEmbedding.content_hash, ChunkEmbedding.embedding).where(
+            ChunkEmbedding.workspace_id == workspace_id,
+            ChunkEmbedding.profile_id == profile_id,
+            ChunkEmbedding.content_hash.in_(set(hashes)),
+        )
+    )
+    # Identical inputs have identical vectors, so any duplicate row will do.
+    return {h: [float(x) for x in vec] for h, vec in rows}
+
+
+async def insert_embeddings(
+    db: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    profile_id: int,
+    rows: Sequence[tuple[uuid.UUID, str, list[float]]],
+) -> None:
+    if rows:
+        await db.execute(
+            insert(ChunkEmbedding),
+            [
+                {
+                    "chunk_id": chunk_id,
+                    "profile_id": profile_id,
+                    "workspace_id": workspace_id,
+                    "content_hash": content_hash,
+                    "embedding": vector,
+                }
+                for chunk_id, content_hash, vector in rows
+            ],
+        )
 
 
 async def list_chunks(
