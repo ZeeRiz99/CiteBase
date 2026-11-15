@@ -39,4 +39,5 @@ tick them off in the final hardening pass.
 - [ ] Calibrate gate thresholds for profile 3 (OpenAI embeddings) when a key is available.
 - [ ] Ambiguous tables: asked for the *express* price, the model answered with a table's only (unlabelled) price column. Add a prompt rule ("if the source does not distinguish, say so") and a golden question for it, then re-run the evals.
 - [ ] Local profile gate: one holdout question fell just under the calibrated 0.80 threshold (false refusal); recalibrate with more questions.
+- [ ] Generation latency outliers: a live CLI answer (2026-11-16) took 11.5 s to generate versus a 1.4 s eval median, with no retries logged (likely free-tier variance). Add latency percentiles to usage events in Phase 4, then compare free vs paid tier and consider a timeout with fallback model.
 - [ ] Phase 2 fix applied early because it affected retrieval: PDF header/footer removal now works from two pages (was three).
