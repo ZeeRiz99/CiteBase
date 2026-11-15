@@ -9,19 +9,24 @@ from fastapi.responses import FileResponse
 from app.api.deps import CurrentContext, DbDep, SettingsDep, require_role
 from app.models import Role
 from app.providers.storage import Storage
+from app.repositories import chat as chat_repo
 from app.repositories import workspaces as ws_repo
 from app.repositories.documents import StatusGroup
 from app.schemas.auth import MessageResponse
+from app.schemas.chat import QuestionCounts
 from app.schemas.documents import (
+    ChunkContextOut,
     ChunkList,
     ChunkOut,
     CollectionOut,
+    ContextDocument,
     DashboardSummary,
     DocumentCounts,
     DocumentDetail,
     DocumentList,
     DocumentOut,
     Limits,
+    PageTextOut,
     VersionOut,
 )
 from app.services.documents import ALLOWED_TYPES, DocumentService
@@ -184,24 +189,37 @@ async def list_chunks(
         document_id, page=page, page_size=page_size
     )
     return ChunkList(
-        items=[
-            ChunkOut(
-                id=c.id,
-                chunk_index=c.chunk_index,
-                page_start=c.page_start,
-                page_end=c.page_end,
-                section_title=c.section_title,
-                char_start=c.char_start,
-                char_end=c.char_end,
-                token_count=c.token_count,
-                text=c.text,
-            )
-            for c in items
-        ],
+        items=[ChunkOut.build(c) for c in items],
         total=total,
         page=page,
         page_size=page_size,
         version_id=version_id,
+    )
+
+
+@router.get("/chunks/{chunk_id}/context")
+async def chunk_context(
+    request: Request, chunk_id: uuid.UUID, ctx: Viewer, db: DbDep, settings: SettingsDep
+) -> ChunkContextOut:
+    found = await _service(request, db, settings, ctx).chunk_context(chunk_id)
+    return ChunkContextOut(
+        chunk=ChunkOut.build(found.chunk),
+        document=ContextDocument(
+            id=found.document.id,
+            title=found.document.title,
+            version_id=found.version.id,
+            version_number=found.version.version_number,
+            is_current=found.version.id == found.document.current_version_id,
+            file_ext=found.version.file_ext,
+            mime_type=found.version.mime_type,
+            page_count=found.version.page_count,
+        ),
+        previous=ChunkOut.build(found.previous) if found.previous else None,
+        next=ChunkOut.build(found.following) if found.following else None,
+        pages=[
+            PageTextOut(page_number=p.page_number, heading_path=p.heading_path, text=p.text)
+            for p in found.pages
+        ],
     )
 
 
@@ -210,4 +228,14 @@ async def dashboard_summary(
     request: Request, ctx: Viewer, db: DbDep, settings: SettingsDep
 ) -> DashboardSummary:
     counts = await _service(request, db, settings, ctx).counts()
-    return DashboardSummary(documents=DocumentCounts(**counts))
+    stats = await chat_repo.question_stats(db, ctx.workspace.id)
+    return DashboardSummary(
+        documents=DocumentCounts(**counts),
+        questions=QuestionCounts(
+            last_7d=stats["last_7d"],
+            last_30d=stats["last_30d"],
+            unanswered_open=stats["unanswered_open"],
+            helpful_rate=round(stats["helpful"] / stats["rated"], 3) if stats["rated"] else None,
+            rated=stats["rated"],
+        ),
+    )

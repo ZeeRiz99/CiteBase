@@ -5,7 +5,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models import Document, DocumentStatus, DocumentVersion
+from app.models import Chunk, Document, DocumentStatus, DocumentVersion
+from app.schemas.chat import QuestionCounts
 
 
 class VersionOut(BaseModel):
@@ -94,6 +95,20 @@ class ChunkOut(BaseModel):
     token_count: int
     text: str
 
+    @classmethod
+    def build(cls, c: Chunk) -> ChunkOut:
+        return cls(
+            id=c.id,
+            chunk_index=c.chunk_index,
+            page_start=c.page_start,
+            page_end=c.page_end,
+            section_title=c.section_title,
+            char_start=c.char_start,
+            char_end=c.char_end,
+            token_count=c.token_count,
+            text=c.text,
+        )
+
 
 class ChunkList(BaseModel):
     items: list[ChunkOut]
@@ -119,3 +134,32 @@ class DocumentCounts(BaseModel):
 
 class DashboardSummary(BaseModel):
     documents: DocumentCounts
+    questions: QuestionCounts
+
+
+class PageTextOut(BaseModel):
+    page_number: int
+    heading_path: str | None
+    text: str
+
+
+class ContextDocument(BaseModel):
+    id: uuid.UUID
+    title: str
+    version_id: uuid.UUID
+    version_number: int
+    is_current: bool
+    file_ext: str
+    mime_type: str
+    page_count: int | None
+
+
+class ChunkContextOut(BaseModel):
+    """A passage for the source viewer. Offsets: char_start in page_start's text, char_end in
+    page_end's text (pages hold the extracted text the chunk was cut from)."""
+
+    chunk: ChunkOut
+    document: ContextDocument
+    previous: ChunkOut | None
+    next: ChunkOut | None
+    pages: list[PageTextOut]

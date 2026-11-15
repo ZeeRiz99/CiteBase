@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Literal
 
-from sqlalchemy import Select, and_, delete, func, insert, or_, select, text
+from sqlalchemy import Select, and_, delete, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -21,6 +21,7 @@ from app.models import (
     DocumentPage,
     DocumentStatus,
     DocumentVersion,
+    MessageSource,
 )
 
 StatusGroup = Literal["processing", "indexed", "attention"]
@@ -294,4 +295,40 @@ async def storage_keys(db: AsyncSession, document_id: uuid.UUID) -> list[str]:
 
 
 async def delete_document(db: AsyncSession, document_id: uuid.UUID) -> None:
+    # Purge means the text is gone everywhere: blank the passages stored with old answers
+    # (their foreign keys become NULL when the rows below are deleted).
+    await db.execute(
+        update(MessageSource)
+        .where(MessageSource.document_id == document_id)
+        .values(snippet="", section_title=None)
+    )
     await db.execute(delete(Document).where(Document.id == document_id))
+
+
+async def get_chunk(db: AsyncSession, workspace_id: uuid.UUID, chunk_id: uuid.UUID) -> Chunk | None:
+    stmt = select(Chunk).where(Chunk.id == chunk_id, Chunk.workspace_id == workspace_id)
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def neighbor_chunks(db: AsyncSession, chunk: Chunk) -> tuple[Chunk | None, Chunk | None]:
+    stmt = select(Chunk).where(
+        Chunk.document_version_id == chunk.document_version_id,
+        Chunk.chunk_index.in_([chunk.chunk_index - 1, chunk.chunk_index + 1]),
+    )
+    by_index = {c.chunk_index: c for c in (await db.execute(stmt)).scalars()}
+    return by_index.get(chunk.chunk_index - 1), by_index.get(chunk.chunk_index + 1)
+
+
+async def pages_between(
+    db: AsyncSession, version_id: uuid.UUID, first: int, last: int
+) -> list[DocumentPage]:
+    stmt = (
+        select(DocumentPage)
+        .where(
+            DocumentPage.document_version_id == version_id,
+            DocumentPage.page_number >= first,
+            DocumentPage.page_number <= last,
+        )
+        .order_by(DocumentPage.page_number)
+    )
+    return list((await db.execute(stmt)).scalars())

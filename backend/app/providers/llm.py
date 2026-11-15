@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
@@ -37,6 +37,7 @@ class LLMUsage:
     model: str
     input_tokens: int = 0
     output_tokens: int = 0
+    kind: str = "chat"  # what the call was for (set by the caller): chat, rewrite, regenerate...
 
 
 @dataclass
@@ -64,7 +65,7 @@ class LLMProvider(Protocol):
 
     def stream(
         self, system: str, messages: list[LLMMessage], params: GenerationParams
-    ) -> AsyncIterator[LLMChunk]: ...
+    ) -> AsyncGenerator[LLMChunk, None]: ...
 
 
 async def complete(
@@ -137,7 +138,7 @@ class GeminiLLM(_StreamingHTTP):
 
     async def stream(
         self, system: str, messages: list[LLMMessage], params: GenerationParams
-    ) -> AsyncIterator[LLMChunk]:
+    ) -> AsyncGenerator[LLMChunk, None]:
         config: dict[str, Any] = {
             "temperature": params.temperature,
             "maxOutputTokens": params.max_tokens,
@@ -192,7 +193,7 @@ class OpenAILLM(_StreamingHTTP):
 
     async def stream(
         self, system: str, messages: list[LLMMessage], params: GenerationParams
-    ) -> AsyncIterator[LLMChunk]:
+    ) -> AsyncGenerator[LLMChunk, None]:
         body: dict[str, Any] = {
             "model": self.model,
             "messages": [{"role": "system", "content": system}]
@@ -236,7 +237,7 @@ class AnthropicLLM(_StreamingHTTP):
 
     async def stream(
         self, system: str, messages: list[LLMMessage], params: GenerationParams
-    ) -> AsyncIterator[LLMChunk]:
+    ) -> AsyncGenerator[LLMChunk, None]:
         body = {
             "model": self.model,
             "system": system,
@@ -275,7 +276,7 @@ class FallbackLLM:
 
     async def stream(
         self, system: str, messages: list[LLMMessage], params: GenerationParams
-    ) -> AsyncIterator[LLMChunk]:
+    ) -> AsyncGenerator[LLMChunk, None]:
         for index, llm in enumerate(self.chain):
             started = False
             try:
@@ -323,7 +324,7 @@ class FakeLLM:
 
     async def stream(
         self, system: str, messages: list[LLMMessage], params: GenerationParams
-    ) -> AsyncIterator[LLMChunk]:
+    ) -> AsyncGenerator[LLMChunk, None]:
         self.calls.append((system, messages))
         text = await self._answer(system, messages)
         for word in re.findall(r"\S+\s*", text):

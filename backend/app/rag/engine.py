@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import AsyncIterator, Sequence
-from dataclasses import asdict, dataclass, field
+from collections.abc import AsyncGenerator, Sequence
+from contextlib import aclosing
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Literal
 
 import structlog
@@ -114,6 +115,10 @@ class MetaEvent:
     standalone_query: str
     evidence: Evidence
     sources: list[SourceRef]
+    signals: GateSignals
+    # Live references, so a caller that stops mid-answer can still record what was spent.
+    usage: list[LLMUsage] = field(default_factory=list)
+    timings_ms: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -198,7 +203,7 @@ class RagEngine:
         except ProviderError as exc:
             log.warning("query_rewrite_failed", error=exc.message)
             return question
-        usage.append(result.usage)
+        usage.append(replace(result.usage, kind="rewrite"))
         rewritten = result.text.strip().strip('"')
         return rewritten or question
 
@@ -228,7 +233,7 @@ class RagEngine:
 
     async def stream(
         self, question: str, history: Sequence[LLMMessage] = ()
-    ) -> AsyncIterator[RagEvent]:
+    ) -> AsyncGenerator[RagEvent, None]:
         t_start = time.perf_counter()
         usage: list[LLMUsage] = []
         timings: dict[str, float] = {}
@@ -241,7 +246,14 @@ class RagEngine:
         timings.update(retrieval.timings_ms)
         decision = decide(signals, self.thresholds)
         sources = _sources(retrieval.candidates)
-        yield MetaEvent(standalone_query=query, evidence=decision.evidence, sources=sources)
+        yield MetaEvent(
+            standalone_query=query,
+            evidence=decision.evidence,
+            sources=sources,
+            signals=signals,
+            usage=usage,
+            timings_ms=timings,
+        )
 
         def finish(
             text: str,
@@ -287,12 +299,14 @@ class RagEngine:
 
         t = time.perf_counter()
         parts: list[str] = []
-        async for chunk in self.llm.stream(SYSTEM_PROMPT, messages, params):
-            if chunk.text:
-                parts.append(chunk.text)
-                yield TokenEvent(chunk.text)
-            if chunk.usage:
-                usage.append(chunk.usage)
+        # aclosing: when the caller stops (user pressed Stop), the provider stream closes at once.
+        async with aclosing(self.llm.stream(SYSTEM_PROMPT, messages, params)) as llm_stream:
+            async for chunk in llm_stream:
+                if chunk.text:
+                    parts.append(chunk.text)
+                    yield TokenEvent(chunk.text)
+                if chunk.usage:
+                    usage.append(chunk.usage)
         timings["generate"] = (time.perf_counter() - t) * 1000
         check = validate("".join(parts), valid)
 
@@ -318,7 +332,7 @@ class RagEngine:
             params,
         )
         timings["regenerate"] = (time.perf_counter() - t) * 1000
-        usage.append(retry.usage)
+        usage.append(replace(retry.usage, kind="regenerate"))
         second = validate(retry.text, valid)
         if second.cited and not second.is_refusal:
             yield ReplaceEvent(second.text)
