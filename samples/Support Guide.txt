@@ -1,0 +1,5 @@
+Northwind Outfitters support guide. Fictional demo content.
+
+Customers can reach support by email at any time. Phone support is open on weekdays.
+
+Warranty claims require the order number and a photo of the defect.

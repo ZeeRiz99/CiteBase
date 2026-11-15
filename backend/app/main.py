@@ -14,6 +14,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import CsrfMiddleware, RequestIdMiddleware
 from app.core.rate_limit import DisabledRateLimiter, InMemoryRateLimiter, RateLimiter
 from app.db.session import create_engine, create_sessionmaker
+from app.providers.storage import build_storage
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -43,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.sessionmaker = create_sessionmaker(engine)
     app.state.limiter = limiter
+    app.state.storage = build_storage(settings)
 
     register_error_handlers(app)
     # Last added runs first: request ids are assigned before the CSRF check can reject.

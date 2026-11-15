@@ -13,14 +13,52 @@ export class ApiError extends Error {
   readonly code: string;
   readonly fields: FieldError[];
   readonly requestId: string | null;
+  readonly details: Record<string, string>;
 
-  constructor(status: number, code: string, message: string, fields: FieldError[] = [], requestId: string | null = null) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields: FieldError[] = [],
+    requestId: string | null = null,
+    details: Record<string, string> = {},
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.fields = fields;
     this.requestId = requestId;
+    this.details = details;
+  }
+}
+
+type ErrorEnvelope = {
+  error?: {
+    code?: string;
+    message?: string;
+    fields?: FieldError[];
+    request_id?: string | null;
+    details?: Record<string, string>;
+  };
+};
+
+const GENERIC_ERROR = "Something went wrong. Please try again.";
+
+/** Build an ApiError from a status code and raw response text (the backend error envelope). */
+export function parseApiError(status: number, text: string): ApiError {
+  try {
+    const err = (JSON.parse(text) as ErrorEnvelope).error ?? {};
+    return new ApiError(
+      status,
+      err.code ?? "http_error",
+      err.message ?? GENERIC_ERROR,
+      err.fields ?? [],
+      err.request_id ?? null,
+      err.details ?? {},
+    );
+  } catch {
+    return new ApiError(status, "http_error", GENERIC_ERROR);
   }
 }
 
@@ -50,7 +88,7 @@ export function readCookie(name: string): string | null {
 
 let csrfInFlight: Promise<string> | null = null;
 
-async function getCsrfToken(): Promise<string> {
+export async function getCsrfToken(): Promise<string> {
   const existing = readCookie(CSRF_COOKIE);
   if (existing) return existing;
   csrfInFlight ??= fetch("/api/v1/auth/csrf", { credentials: "same-origin" })
@@ -66,21 +104,7 @@ async function getCsrfToken(): Promise<string> {
 }
 
 async function toApiError(res: Response): Promise<ApiError> {
-  try {
-    const body = (await res.json()) as {
-      error?: { code?: string; message?: string; fields?: FieldError[]; request_id?: string | null };
-    };
-    const err = body.error ?? {};
-    return new ApiError(
-      res.status,
-      err.code ?? "http_error",
-      err.message ?? "Something went wrong. Please try again.",
-      err.fields ?? [],
-      err.request_id ?? null,
-    );
-  } catch {
-    return new ApiError(res.status, "http_error", "Something went wrong. Please try again.");
-  }
+  return parseApiError(res.status, await res.text().catch(() => ""));
 }
 
 async function send(method: string, path: string, body?: unknown): Promise<Response> {

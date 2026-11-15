@@ -616,6 +616,22 @@ docker run --rm hello-world && docker compose version
 | Images | `pgvector/pgvector:0.8.6-pg17-bookworm`, `python:3.12-slim-bookworm`, `node:24-bookworm-slim`, `caddy:2.10-alpine`, `axllent/mailpit:v1.27` | Pinned tags, all published before the cutoff |
 | Workspace embedding profile | The `embedding_profiles` table and `workspaces.embedding_profile_id` arrive with the Phase 3 migration | Not needed until embeddings exist |
 
+### Decisions made during Phase 2
+
+| Topic | Decision | Why |
+|---|---|---|
+| Latest vs current version | `documents.latest_version_id` (most recent upload, any status) and `current_version_id` (what retrieval serves). A new version becomes current only once indexed | Re-uploading never takes a document offline or serves half-processed text |
+| Chunk page fields | `page_start`/`page_end` are NOT NULL: PDF page numbers, or section ordinals for DOCX/MD/TXT (matching `document_pages.page_number`) | One citation model for every format |
+| Parser isolation | Extraction runs in a `forkserver` child process with a hard timeout (300 s default); a crash or OOM kill becomes a clean `failed` status | Parsers are the largest attack surface |
+| Chunk boundaries | Soft boundary at every section start (DOCX/MD) and every page start (PDF/TXT) once the chunk has `min_tokens`; hard boundary at a change of top-level heading; overlap only within a section | Citations can name a single page or section whenever the text allows |
+| Token counting | tiktoken `cl100k_base`, cached in the image at build time | Provider-neutral and works offline; Phase 3 adds an embedding-tokenizer check |
+| Duplicates | Rejected per workspace by SHA-256 against live documents' current and latest versions (409 with the existing document id) | Identical files across workspaces are not duplicates |
+| Deletion | Soft delete enqueues a `purge_document` job with `run_after = purge_after` (30 days default); owners can purge immediately | No cross-tenant scanner needed under RLS |
+| Failures | Known extraction problems mark the version `failed` with a user-safe message and no automatic retry; unexpected errors retry up to 3 times (version shows "retrying") | Users see a clear reason; transient faults heal themselves |
+| Async ORM | `eager_defaults=True` on the declarative base (except `audit_log`) | Server-generated `updated_at` would otherwise lazy-load, which async sessions forbid |
+| Worker transactions | The claim transaction ends before a handler runs; handlers use their own sessions | Long PDF jobs must not hold an idle transaction |
+| shadcn CLI | Moved to `devDependencies` | Build-time tool; keeps the runtime dependency audit clean |
+
 ## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*

@@ -1,28 +1,14 @@
-"""Job handlers. Each handler declares whether its payload is sensitive (scrubbed on success)."""
+"""Job handler registry. Handlers with sensitive payloads have them scrubbed on success."""
 
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-from app.core.config import Settings
+from app.ingestion.pipeline import ingest_document, purge_document
 from app.models import Job
-from app.providers.email import EmailSender
 from app.services import emails
-
-
-class PermanentJobError(Exception):
-    """The job can never succeed (bad payload, missing data). Do not retry."""
-
-
-@dataclass(frozen=True)
-class WorkerContext:
-    settings: Settings
-    sessionmaker: async_sessionmaker[AsyncSession]
-    email_sender: EmailSender
-
+from app.worker.context import PermanentJobError, WorkerContext
 
 Handler = Callable[[Job, WorkerContext], Awaitable[None]]
 
@@ -44,4 +30,8 @@ async def send_email(job: Job, ctx: WorkerContext) -> None:
 HANDLERS: dict[str, HandlerSpec] = {
     # Email payloads contain one-time links, so they are wiped once sent.
     "send_email": HandlerSpec(run=send_email, scrub_payload_on_success=True),
+    "ingest": HandlerSpec(run=ingest_document),
+    "purge_document": HandlerSpec(run=purge_document),
 }
+
+__all__ = ["HANDLERS", "HandlerSpec", "PermanentJobError", "WorkerContext"]

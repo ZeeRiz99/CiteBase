@@ -16,7 +16,11 @@ dependencies = [
     "email-validator>=2.2",           # EmailStr validation
     "aiosmtplib>=3.0",                # async SMTP for transactional email
     "structlog>=24.4",                # structured logging with redaction
-    "python-multipart>=0.0.18",       # form and file uploads (Phase 2)
+    "python-multipart>=0.0.18",       # form and file uploads
+    "pdfplumber>=0.11",               # PDF text + table extraction (MIT; not AGPL PyMuPDF)
+    "pypdfium2>=4.30",                # fast PDF page count / encryption check (Apache-2.0/BSD)
+    "python-docx>=1.1",               # DOCX paragraphs, headings and tables (MIT)
+    "tiktoken>=0.8",                  # provider-neutral token counts for chunk sizing (MIT)
 ]
 
 [dependency-groups]
@@ -27,6 +31,7 @@ dev = [
     "ruff>=0.8",            # lint and format
     "mypy>=1.13",           # type checking
     "pip-audit>=2.7",       # dependency vulnerability scan
+    "reportlab>=4.2",       # generate PDF test fixtures and samples (BSD)
 ]
 
 [tool.uv]
@@ -45,13 +50,14 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "RUF", "SIM", "PL"]
-ignore = ["PLR0913", "PLR2004", "S101"]
+# PLR0913/PLR0917: FastAPI handlers declare dependencies as parameters by design.
+ignore = ["PLR0913", "PLR0917", "PLR2004", "S101"]
 
 [tool.ruff.lint.isort]
 known-third-party = ["alembic"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S107", "PLR0915"]
+"tests/**" = ["S105", "S106", "S107", "PLR0915", "RUF001"]  # RUF001: real-world unicode in fixtures
 "app/services/emails.py" = ["E501"]  # inline-styled HTML email markup
 "alembic/**" = ["E501"]
 
@@ -64,6 +70,10 @@ exclude = ["alembic/versions"]
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["pypdfium2", "pypdfium2.*"]  # ships without type information
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

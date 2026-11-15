@@ -12,7 +12,7 @@ from app.providers.email import OutgoingEmail
 from app.repositories.system import enqueue_job
 from app.repositories.users import utcnow
 from app.worker import queue
-from app.worker.handlers import WorkerContext
+from app.worker.context import WorkerContext
 from app.worker.runner import run_once
 
 EMAIL_PAYLOAD = {
@@ -46,7 +46,10 @@ async def _job(app: FastAPI) -> Job:
 
 def _ctx(app: FastAPI, settings: Settings, sender: Any) -> WorkerContext:
     return WorkerContext(
-        settings=settings, sessionmaker=app.state.sessionmaker, email_sender=sender
+        settings=settings,
+        sessionmaker=app.state.sessionmaker,
+        email_sender=sender,
+        storage=app.state.storage,
     )
 
 

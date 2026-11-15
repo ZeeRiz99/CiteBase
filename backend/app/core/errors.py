@@ -22,9 +22,16 @@ class AppError(Exception):
     code = "bad_request"
     message = "The request could not be processed."
 
-    def __init__(self, message: str | None = None, *, code: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
         self.message = message or self.message
         self.code = code or self.code
+        self.details = details  # safe, structured extras (e.g. the id of a duplicate document)
         super().__init__(self.message)
 
 
@@ -75,11 +82,17 @@ def _request_id(request: Request) -> str | None:
 
 
 def error_body(
-    code: str, message: str, request_id: str | None, fields: list[dict[str, Any]] | None = None
+    code: str,
+    message: str,
+    request_id: str | None,
+    fields: list[dict[str, Any]] | None = None,
+    details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {"code": code, "message": message, "request_id": request_id}
     if fields:
         body["fields"] = fields
+    if details:
+        body["details"] = details
     return {"error": body}
 
 
@@ -88,7 +101,7 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _app_error(request: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_body(exc.code, exc.message, _request_id(request)),
+            content=error_body(exc.code, exc.message, _request_id(request), details=exc.details),
         )
 
     @app.exception_handler(RequestValidationError)

@@ -126,7 +126,7 @@ function Topbar({ me, pathname }: { me: Me; pathname: string }) {
   );
 }
 
-function ShellSkeleton() {
+export function ShellSkeleton() {
   return (
     <div className="flex min-h-screen" aria-busy="true" aria-label="Loading your workspace">
       <div className="hidden w-64 shrink-0 bg-sidebar lg:block" />
