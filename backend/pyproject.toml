@@ -21,21 +21,32 @@ dependencies = [
     "pypdfium2>=4.30",                # fast PDF page count / encryption check (Apache-2.0/BSD)
     "python-docx>=1.1",               # DOCX paragraphs, headings and tables (MIT)
     "tiktoken>=0.8",                  # provider-neutral token counts for chunk sizing (MIT)
+    "pgvector>=0.3",                  # pgvector type for SQLAlchemy and psycopg (MIT)
+    "httpx>=0.27",                    # provider adapters call LLM/embedding REST APIs directly
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",          # test runner
     "pytest-asyncio>=0.24", # async tests
-    "httpx>=0.27",          # ASGI test client
+    "pyyaml>=6.0",          # golden question set and eval configs (MIT)
     "ruff>=0.8",            # lint and format
     "mypy>=1.13",           # type checking
     "pip-audit>=2.7",       # dependency vulnerability scan
     "reportlab>=4.2",       # generate PDF test fixtures and samples (BSD)
 ]
+# Local embedding service only (separate image stage); ONNX keeps it far lighter than PyTorch.
+embedder = [
+    "onnxruntime>=1.19",    # run the ONNX export of multilingual-e5-small on CPU (MIT)
+    "tokenizers>=0.20",     # fast tokenizer for the model (Apache-2.0)
+    "huggingface-hub>=0.25",# download model files once into a volume (Apache-2.0)
+    "numpy>=1.26",          # mean pooling and normalization (BSD)
+]
 
 [tool.uv]
 package = false
+# The dev image also gets the embedder group so the local embedding service is type-checked and tested.
+default-groups = ["dev", "embedder"]
 # Supply-chain hygiene: resolve only releases published before this date.
 exclude-newer = "2026-10-31T00:00:00Z"
 # Security fixes published after the cutoff are allowed per package (found by pip-audit).
@@ -59,6 +70,8 @@ known-third-party = ["alembic"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106", "S107", "PLR0915", "RUF001"]  # RUF001: real-world unicode in fixtures
 "app/services/emails.py" = ["E501"]  # inline-styled HTML email markup
+"app/rag/prompting.py" = ["E501"]  # prompt prose: wording is behaviour, keep it unwrapped
+"evals/**" = ["E501", "S311"]  # report/markdown templates; eval-only code
 "alembic/**" = ["E501"]
 
 [tool.mypy]
@@ -72,7 +85,7 @@ module = ["tests.*"]
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = ["pypdfium2", "pypdfium2.*"]  # ships without type information
+module = ["pypdfium2", "pypdfium2.*", "onnxruntime", "onnxruntime.*"]  # ship without type info
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

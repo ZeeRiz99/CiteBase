@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -102,6 +103,10 @@ class DocumentVersion(UUIDPk, Timestamps, Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Which embedding profile indexed this version (None until embedded).
+    embedding_profile_id: Mapped[int | None] = mapped_column(
+        SmallInteger, ForeignKey("embedding_profiles.id")
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL")
     )

@@ -51,6 +51,28 @@ class Settings(BaseSettings):
     extraction_timeout_seconds: int = Field(default=300, gt=0)
     retention_days: int = Field(default=30, ge=0)  # soft-deleted documents are purged after this
 
+    # AI providers. Keys come only from the environment; they are never logged or returned.
+    gemini_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    anthropic_api_key: SecretStr | None = None
+    # "auto" uses the real provider for the profile/model; "fake" is deterministic (tests, CI).
+    embedding_backend: Literal["auto", "fake"] = "auto"
+    llm_backend: Literal["auto", "fake"] = "auto"
+    default_embedding_profile: int = 2  # see app/rag/profiles.py
+    embedder_url: str = "http://embedder:8001"  # local embedding service (profile 1)
+    llm_provider: Literal["gemini", "openai", "anthropic"] = "gemini"
+    llm_model: str = "gemini-3.5-flash-lite"
+    llm_fallback_models: list[str] = Field(default_factory=list)
+    llm_cheap_model: str = "gemini-3.5-flash-lite"  # query rewriting, eval judging
+    llm_thinking_level: str = "minimal"  # Gemini 3.x: minimal thinking keeps answers fast
+    llm_temperature: float = 0.1
+    llm_max_output_tokens: int = 1024
+    llm_timeout_seconds: float = 60.0
+
+    # Retrieval
+    rag_candidates: int = Field(default=30, ge=5, le=100)  # per search method, before fusion
+    rag_top_k: int = Field(default=6, ge=1, le=20)
+
     @field_validator("secret_key")
     @classmethod
     def _secret_key_strength(cls, value: SecretStr) -> SecretStr:

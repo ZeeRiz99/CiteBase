@@ -5,7 +5,13 @@ from itertools import pairwise
 
 import pytest
 
-from app.ingestion.chunking import ChunkingConfig, PageText, chunk_pages, count_tokens
+from app.ingestion.chunking import (
+    ChunkingConfig,
+    PageText,
+    chunk_pages,
+    count_tokens,
+    section_label,
+)
 
 SENTENCE = "The quarterly report covers revenue, staffing and customer satisfaction in detail."
 
@@ -92,6 +98,29 @@ def test_tiny_pdf_pages_still_merge() -> None:
     chunks = chunk_pages(pages, CFG)
     assert len(chunks) == 1
     assert (chunks[0].page_start, chunks[0].page_end) == (1, 4)
+
+
+def test_merged_sections_are_labelled_with_their_range() -> None:
+    pages = [
+        PageText(1, "Short poles text.", ("Catalog", "Poles")),
+        PageText(2, "Short bag text.", ("Catalog", "Sleeping Bag")),
+    ]
+    [chunk] = chunk_pages(pages, CFG)
+    assert chunk.section_title == "Catalog › Poles to Sleeping Bag"
+
+
+@pytest.mark.parametrize(
+    ("paths", "expected"),
+    [
+        ([()], None),
+        ([("A",), ("A",)], "A"),
+        ([("A", "B"), ("A", "B")], "A › B"),
+        ([("A", "B"), ("A", "C"), ("A", "D")], "A › B to D"),
+        ([("A",), ("A", "B")], "A"),
+    ],
+)
+def test_section_label(paths: list[tuple[str, ...]], expected: str | None) -> None:
+    assert section_label(paths) == expected
 
 
 def test_table_chunks_repeat_the_header() -> None:

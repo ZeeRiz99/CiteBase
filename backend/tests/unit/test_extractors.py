@@ -32,6 +32,15 @@ def test_pdf_text_pages_and_header_footer_removal(tmp_path: Path) -> None:
     assert "Page 2" not in joined  # page-number footer removed
 
 
+def test_two_page_pdf_headers_and_footers_are_removed(tmp_path: Path) -> None:
+    pdf = factory.pdf_with_text(["First page body text here.", "Second page body text here."])
+    result = extract(write(tmp_path, "two.pdf", pdf), ".pdf")
+    joined = "\n".join(p.text for p in result.pages)
+    assert "Confidential" not in joined
+    assert "Page 1" not in joined and "Page 2" not in joined
+    assert "First page body text here." in joined
+
+
 def test_pdf_tables_become_markdown(tmp_path: Path) -> None:
     result = extract(write(tmp_path, "t.pdf", factory.pdf_with_table()), ".pdf")
     text = result.pages[0].text

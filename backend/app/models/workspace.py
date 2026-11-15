@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -30,6 +31,9 @@ class Workspace(UUIDPk, Timestamps, Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     fts_config: Mapped[str] = mapped_column(String(40), nullable=False, server_default="english")
+    embedding_profile_id: Mapped[int] = mapped_column(
+        SmallInteger, ForeignKey("embedding_profiles.id"), nullable=False, server_default="2"
+    )
     settings: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

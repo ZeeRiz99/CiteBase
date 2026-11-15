@@ -8,6 +8,7 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
+import httpx
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -30,6 +31,7 @@ class WorkerContext:
     sessionmaker: async_sessionmaker[AsyncSession]
     email_sender: EmailSender
     storage: Storage
+    http: httpx.AsyncClient  # shared client for AI provider calls (connection reuse)
 
 
 async def touch(maker: async_sessionmaker[AsyncSession], job_id: uuid.UUID) -> None:

@@ -177,7 +177,14 @@ class AuthService:
         self.db.add(user)
         await self.db.flush()
         ws_name = workspace_name or f"{full_name.split(' ', maxsplit=1)[0]}'s workspace"
-        self.db.add(Workspace(id=workspace_id, name=ws_name, slug=_slugify(ws_name)))
+        self.db.add(
+            Workspace(
+                id=workspace_id,
+                name=ws_name,
+                slug=_slugify(ws_name),
+                embedding_profile_id=self.settings.default_embedding_profile,
+            )
+        )
         await self.db.flush()
         self.db.add(Membership(workspace_id=workspace_id, user_id=user_id, role=Role.owner))
         self.db.add(Collection(workspace_id=workspace_id, name="General", is_default=True))

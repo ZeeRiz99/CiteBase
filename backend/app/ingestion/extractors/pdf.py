@@ -67,15 +67,18 @@ def _signature(text: str) -> str:
 
 
 def _repeated_margins(pages: list[list[_Item]]) -> set[str]:
-    """Lines among the first/last two of most pages: headers, footers, page numbers."""
-    if len(pages) < 3:
+    """Lines among the first/last two of most pages: headers, footers, page numbers.
+
+    Two-page documents need the line on both pages; longer ones on at least half of them.
+    """
+    if len(pages) < 2:
         return set()
     counts: Counter[str] = Counter()
     for items in pages:
         lines = [i for i in items if not i.is_table]
         edge = {_signature(i.text) for i in lines[:2] + lines[-2:]}
         counts.update(edge)
-    threshold = max(3, int(len(pages) * 0.5))
+    threshold = len(pages) if len(pages) == 2 else max(2, (len(pages) + 1) // 2)
     return {sig for sig, n in counts.items() if n >= threshold and sig}
 
 

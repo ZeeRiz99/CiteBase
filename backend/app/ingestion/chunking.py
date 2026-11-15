@@ -223,6 +223,29 @@ def _render(pieces: list[_Piece]) -> str:
     return "".join(parts)
 
 
+def section_label(paths: list[tuple[str, ...]]) -> str | None:
+    """Label for a chunk that may span several sections: shared parent plus first-to-last range.
+
+    ("Catalog", "Poles") .. ("Catalog", "Sleeping Bag") -> "Catalog > Poles to Sleeping Bag", so a
+    citation never names only the first section of a merged chunk.
+    """
+    distinct = [p for i, p in enumerate(paths) if p and p not in paths[:i]]
+    if not distinct:
+        return None
+    if len(distinct) == 1:
+        return HEADING_SEPARATOR.join(distinct[0])
+    first, last = distinct[0], distinct[-1]
+    common = 0
+    while common < min(len(first), len(last)) and first[common] == last[common]:
+        common += 1
+    head = list(first[:common])
+    first_rest = HEADING_SEPARATOR.join(first[common:])
+    last_rest = HEADING_SEPARATOR.join(last[common:])
+    if not first_rest or not last_rest:  # one section contains the other: name the parent
+        return HEADING_SEPARATOR.join(head)
+    return HEADING_SEPARATOR.join([*head, f"{first_rest} to {last_rest}"])
+
+
 def _draft(index: int, pieces: list[_Piece]) -> ChunkDraft:
     text = _render(pieces)
     return ChunkDraft(
@@ -232,7 +255,7 @@ def _draft(index: int, pieces: list[_Piece]) -> ChunkDraft:
         page_end=pieces[-1].page,
         char_start=pieces[0].start,
         char_end=pieces[-1].end,
-        section_title=HEADING_SEPARATOR.join(pieces[0].heading_path) or None,
+        section_title=section_label([p.heading_path for p in pieces]),
         token_count=count_tokens(text),
         content_hash=hashlib.sha256(text.encode()).hexdigest(),
     )

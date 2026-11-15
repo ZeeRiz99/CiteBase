@@ -1,0 +1,10 @@
+name: chunk-200
+description: Smaller chunks (200-token target) to test whether finer passages improve precision.
+embedding_profile: 2
+chunking: {target_tokens: 200, max_tokens: 260, overlap_tokens: 30, min_tokens: 60}
+top_k: 6
+candidates: 30
+llm_model: gemini-3.5-flash-lite
+cheap_model: gemini-3.5-flash-lite
+calibrate: true
+judge: true
