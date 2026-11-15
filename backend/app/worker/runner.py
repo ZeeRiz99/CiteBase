@@ -16,8 +16,10 @@ from app.core.logging import configure_logging
 from app.db.session import create_engine, create_sessionmaker
 from app.models import Job
 from app.providers.email import build_email_sender
+from app.providers.storage import build_storage
 from app.worker import queue
-from app.worker.handlers import HANDLERS, PermanentJobError, WorkerContext
+from app.worker.context import PermanentJobError, WorkerContext
+from app.worker.handlers import HANDLERS
 
 log = structlog.get_logger("worker")
 STALE_CHECK_SECONDS = 30
@@ -36,6 +38,8 @@ async def run_once(ctx: WorkerContext, wid: str) -> bool:
         job = await db.get(Job, job_id)
         if job is None:
             return False
+        # End the read transaction now: handlers can run for minutes and use their own sessions.
+        await db.commit()
         spec = HANDLERS.get(job.job_type)
         bound = log.bind(job_id=str(job.id), job_type=job.job_type, attempt=job.attempts)
         if spec is None:
@@ -62,6 +66,7 @@ async def run_forever(settings: Settings) -> None:
         settings=settings,
         sessionmaker=create_sessionmaker(engine),
         email_sender=build_email_sender(settings),
+        storage=build_storage(settings),
     )
     wid = worker_id()
     stop = asyncio.Event()

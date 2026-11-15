@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -18,12 +19,16 @@ from sqlalchemy import create_engine, text
 from app.core.config import Settings
 from app.main import create_app
 from app.providers.email import MemoryEmailSender, OutgoingEmail
-from app.worker.handlers import WorkerContext
+from app.worker.context import WorkerContext
 from app.worker.runner import run_once
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "")
 TEST_MIGRATIONS_DATABASE_URL = os.environ.get("TEST_MIGRATIONS_DATABASE_URL", "")
 TABLES = (
+    "chunks",
+    "document_pages",
+    "document_versions",
+    "documents",
     "jobs",
     "domain_events",
     "audit_log",
@@ -66,7 +71,7 @@ def clean_db(owner_engine: Any) -> None:
 
 
 @pytest.fixture
-def settings() -> Settings:
+def settings(tmp_path: Path) -> Settings:
     return Settings(
         environment="test",
         database_url=TEST_DATABASE_URL,
@@ -74,6 +79,8 @@ def settings() -> Settings:
         cookie_secure=False,
         email_backend="memory",
         app_base_url="http://testserver",
+        storage_dir=str(tmp_path / "storage"),
+        extraction_timeout_seconds=60,
     )
 
 
@@ -111,6 +118,21 @@ class Api:
 
     async def patch(self, url: str, json: Any = None) -> httpx.Response:
         return await self.send("PATCH", url, json)
+
+    async def delete(self, url: str) -> httpx.Response:
+        return await self.send("DELETE", url)
+
+    async def upload(
+        self,
+        filename: str,
+        content: bytes,
+        url: str = "/api/v1/documents",
+        data: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        headers = {"X-CSRF-Token": await self._csrf()}
+        return await self.client.post(
+            url, files={"file": (filename, content)}, data=data or {}, headers=headers
+        )
 
     async def register(
         self,
@@ -150,16 +172,27 @@ async def api_b(app: FastAPI) -> AsyncIterator[Api]:
 
 
 class Mailbox:
+    """Runs queued jobs in-process (the real worker code) and captures sent email."""
+
     def __init__(self, app: FastAPI, settings: Settings) -> None:
         self.sender = MemoryEmailSender()
         self.ctx = WorkerContext(
-            settings=settings, sessionmaker=app.state.sessionmaker, email_sender=self.sender
+            settings=settings,
+            sessionmaker=app.state.sessionmaker,
+            email_sender=self.sender,
+            storage=app.state.storage,
         )
+
+    async def drain(self) -> int:
+        """Run due jobs until none are left. Returns how many ran."""
+        count = 0
+        while await run_once(self.ctx, "test-worker"):
+            count += 1
+        return count
 
     async def deliver(self) -> list[OutgoingEmail]:
         """Run the worker until the queue is empty, then return everything sent so far."""
-        while await run_once(self.ctx, "test-worker"):
-            pass
+        await self.drain()
         return self.sender.outbox
 
     @staticmethod

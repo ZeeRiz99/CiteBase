@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     worker_poll_seconds: float = Field(default=1.0, gt=0)
 
+    # Documents
+    storage_dir: str = "/data/storage"
+    max_upload_mb: int = Field(default=50, gt=0)  # hard cap; workspaces may set lower
+    max_pdf_pages: int = Field(default=500, gt=0)
+    extraction_timeout_seconds: int = Field(default=300, gt=0)
+    retention_days: int = Field(default=30, ge=0)  # soft-deleted documents are purged after this
+
     @field_validator("secret_key")
     @classmethod
     def _secret_key_strength(cls, value: SecretStr) -> SecretStr:

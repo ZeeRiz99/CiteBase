@@ -19,6 +19,9 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+    # Fetch server-generated values (created_at, updated_at on UPDATE) with RETURNING, so
+    # reading them later never triggers a lazy load, which async sessions cannot do.
+    __mapper_args__ = {"eager_defaults": True}  # noqa: RUF012
 
 
 class UUIDPk:

@@ -1,25 +1,49 @@
 "use client";
 
-import { CheckCircle2, Circle, KeyRound, ShieldCheck, Building2 } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, Circle, FileCheck2, Files, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { useResendVerification } from "@/components/app/verify-email-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/lib/auth";
+import { useDashboardSummary } from "@/lib/documents";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", member: "Member", viewer: "Viewer" } as const;
 
 export function DashboardView() {
   const { data: me } = useMe();
+  const summary = useDashboardSummary();
   const resend = useResendVerification();
   if (!me) return null; // the app shell renders the loading state
 
+  const docs = summary.data?.documents;
   const firstName = me.user.full_name.split(" ")[0];
-  const steps = [
+  const steps: { label: string; done: boolean; action?: ReactNode }[] = [
     { label: "Create your workspace", done: true },
-    { label: "Confirm your email address", done: me.user.email_verified },
+    {
+      label: "Confirm your email address",
+      done: me.user.email_verified,
+      action: (
+        <Button size="sm" variant="outline" onClick={() => resend.mutate()} disabled={resend.isPending}>
+          {resend.isPending ? "Sending…" : "Resend email"}
+        </Button>
+      ),
+    },
+    {
+      label: "Upload your first document",
+      done: (docs?.total ?? 0) > 0,
+      action: (
+        <Button size="sm" asChild>
+          <Link href="/knowledge-base">
+            <Upload aria-hidden /> Upload
+          </Link>
+        </Button>
+      ),
+    },
   ];
   const completed = steps.filter((s) => s.done).length;
 
@@ -29,6 +53,20 @@ export function DashboardView() {
         <h1 className="text-2xl font-semibold text-navy-900 sm:text-3xl">Welcome, {firstName}</h1>
         <p className="text-muted-foreground">Here is the state of your workspace.</p>
       </div>
+
+      <section aria-label="Document statistics" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Documents" value={docs?.total} icon={<Files className="size-4" aria-hidden />} loading={summary.isPending} />
+        <Stat label="Ready" value={docs?.indexed} icon={<FileCheck2 className="size-4" aria-hidden />} loading={summary.isPending} tone="teal" />
+        <Stat label="Processing" value={docs?.processing} icon={<Loader2 className="size-4" aria-hidden />} loading={summary.isPending} />
+        <Stat
+          label="Needs attention"
+          value={docs?.attention}
+          icon={<AlertTriangle className="size-4" aria-hidden />}
+          loading={summary.isPending}
+          tone={(docs?.attention ?? 0) > 0 ? "amber" : undefined}
+          href={(docs?.attention ?? 0) > 0 ? "/knowledge-base" : undefined}
+        />
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="shadow-soft md:col-span-2">
@@ -60,11 +98,7 @@ export function DashboardView() {
                   <span className={step.done ? "text-sm text-muted-foreground line-through" : "text-sm font-medium"}>
                     {step.label}
                   </span>
-                  {!step.done ? (
-                    <Button size="sm" variant="outline" className="ml-auto" onClick={() => resend.mutate()} disabled={resend.isPending}>
-                      {resend.isPending ? "Sending…" : "Resend email"}
-                    </Button>
-                  ) : null}
+                  {!step.done && step.action ? <span className="ml-auto">{step.action}</span> : null}
                 </li>
               ))}
             </ul>
@@ -88,27 +122,47 @@ export function DashboardView() {
                 {ROLE_LABEL[me.role]}
               </Badge>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Your data is isolated from every other workspace at the database level.
+            </p>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="shadow-soft">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck className="size-4 text-teal-700" aria-hidden /> Account security
-          </CardTitle>
-          <CardDescription>
-            Your workspace data is isolated from every other workspace at the database level.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline">
-            <Link href="/settings#password">
-              <KeyRound aria-hidden /> Change password
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
     </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  icon,
+  loading,
+  tone,
+  href,
+}: {
+  label: string;
+  value: number | undefined;
+  icon: ReactNode;
+  loading: boolean;
+  tone?: "teal" | "amber";
+  href?: string;
+}) {
+  const body = (
+    <Card className="h-full gap-2 py-4 shadow-soft">
+      <CardContent className="grid gap-1 px-4">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className={tone === "teal" ? "text-teal-700" : tone === "amber" ? "text-warning" : "text-navy-600"}>{icon}</span>
+          {label}
+        </p>
+        {loading ? <Skeleton className="h-8 w-12" /> : <p className="text-3xl font-semibold text-navy-900">{value ?? 0}</p>}
+      </CardContent>
+    </Card>
+  );
+  return href ? (
+    <Link href={href} className="rounded-xl">
+      {body}
+    </Link>
+  ) : (
+    body
   );
 }

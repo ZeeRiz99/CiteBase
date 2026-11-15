@@ -15,6 +15,13 @@ x-backend-env: &backend-env
   SMTP_HOST: ${SMTP_HOST:-mailpit}
   SMTP_PORT: ${SMTP_PORT:-1025}
   EMAIL_FROM: ${EMAIL_FROM:-CiteBase <no-reply@citebase.local>}
+  STORAGE_DIR: /data/storage
+
+# Uploaded originals, shared by the API (writes, serves) and the worker (reads, purges).
+x-storage-volume: &storage-volume
+  type: volume
+  source: storage
+  target: /data/storage
 
 services:
   postgres:
@@ -54,6 +61,7 @@ services:
   api:
     build: { context: ./backend, target: prod }
     environment: *backend-env
+    volumes: [*storage-volume]
     depends_on:
       migrate: { condition: service_completed_successfully }
     healthcheck:
@@ -68,9 +76,10 @@ services:
     build: { context: ./backend, target: prod }
     command: ["python", "-m", "app.worker"]
     environment: *backend-env
+    volumes: [*storage-volume]
     depends_on:
       migrate: { condition: service_completed_successfully }
-    mem_limit: 384m
+    mem_limit: 768m   # PDF parsing runs in a child process of the worker
     restart: unless-stopped
 
   web:
@@ -97,3 +106,4 @@ services:
 
 volumes:
   pgdata:
+  storage:

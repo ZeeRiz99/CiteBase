@@ -6,8 +6,9 @@ CiteBase is a knowledge-base platform for businesses: upload documents, ask ques
 language, and get answers with citations to the exact page and passage. When the documents do not
 contain the answer, it says so.
 
-> Status: **Phase 1 (Foundation)**: authentication, multi-tenant data model with row-level security,
-> background worker, design system and app shell. Document ingestion and the RAG engine come next.
+> Status: **Phase 2 (Documents)**: authentication, workspace isolation with row-level security, and a
+> knowledge base that uploads, validates, extracts, chunks and keyword-indexes PDF, Word, Markdown and
+> text files. The RAG engine (embeddings, retrieval, cited answers) comes next.
 > See [docs/PROGRESS.md](docs/PROGRESS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Quick start
@@ -34,6 +35,10 @@ also stops WSL and returns its memory; the next `wsl docker compose up -d` bring
 
 Try it: open the app, create an account, open Mailpit, click the confirmation link, then sign out,
 use "Forgot password?" and follow the emailed link.
+
+Then open **Knowledge base** and drag in the files from [`samples/`](samples/) (fictional demo
+documents). Within seconds five show **Ready** and the scanned PDF shows **Needs OCR**; open a document
+to see how it was split into passages.
 
 ## Development
 
