@@ -632,6 +632,21 @@ docker run --rm hello-world && docker compose version
 | Worker transactions | The claim transaction ends before a handler runs; handlers use their own sessions | Long PDF jobs must not hold an idle transaction |
 | shadcn CLI | Moved to `devDependencies` | Build-time tool; keeps the runtime dependency audit clean |
 
+### Decisions made during Phase 3
+
+| Topic | Decision | Why |
+|---|---|---|
+| Default models | Answers and cheap tasks: `gemini-3.5-flash-lite` with `thinkingLevel: minimal`; embeddings: `gemini-embedding-2` at 768 dims (profile 2). Verified live against the user's key | Flash-Lite is officially priced and has a free tier; minimal thinking cut first-token time from 7.2 s to 0.8 s in probes. `gemini-3.5-flash` is not on the official pricing page |
+| Provider adapters | Thin httpx adapters over the REST/SSE APIs, no vendor SDKs; retries only before the first token; `FallbackLLM` chain on 429/5xx | One dependency for three providers; a mid-answer retry would duplicate text |
+| Local embeddings | `multilingual-e5-small` via **ONNX Runtime** in a separate `embedder` service (Compose profile `local-embeddings`), not sentence-transformers/PyTorch | About a tenth of the image size and memory on an 8 GB machine; one model instance shared by API and worker |
+| Vector storage | `chunk_embeddings(chunk_id, profile_id)` with one partial HNSW index per profile over `embedding::vector(dim)`; cache key is the SHA-256 of the exact embedding input (title, section, text) | Model switches never mix vectors; retries and re-uploads reuse vectors |
+| Chunk cap | Chunk max is capped at 80% of the profile's input window (e5: 409 tiktoken tokens) | tiktoken only approximates the model tokenizer; avoids silent truncation |
+| Streaming + citations | Plain text with `[n]` markers, validated after the stream; a `replace` event swaps the text when invalid markers are stripped or after one regeneration | Same guarantees as structured output, reliable across providers |
+| Gate | Calibrated per profile by `evals/run.py`; profile 2 thresholds 0.60 / 0.60 (off-topic 0.52-0.56, answerable >= 0.63 on the demo corpus). Calibration prefers semantic evidence over keyword-only passes and centres thresholds in the gap | Thresholds are data, not guesses; recalibrate per client corpus |
+| Eval harness | Fresh workspace per run through the real pipeline; quote-anchored labels; train/holdout split; LLM judge (Flash-Lite, JSON) for key points, faithfulness and injection; reports + JSON + spot-check CSV in `docs/evals/` | Reproducible numbers that can go in the README |
+| Merged-section labels | A chunk spanning several sections is labelled "Parent > First to Last" | Citations must not name only the first section of a merged chunk (found by the eval) |
+| Cost | `app/core/pricing.py` holds only officially read prices with source and date; unknown models show "price not configured" | No invented numbers |
+
 ## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*

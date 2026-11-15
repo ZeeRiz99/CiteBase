@@ -48,7 +48,11 @@ PROFILES: dict[int, EmbeddingProfile] = {
         max_input_tokens=512,
         query_prefix="query: ",
         passage_prefix="passage: ",
-        gate=GateThresholds(vec_hi=0.86, vec_lo=0.80, kw_coverage=0.5),
+        # Calibrated by evals/run.py (docs/evals/2026-11-15-local-e5.md). e5 similarities are
+        # compressed (irrelevant passages still score ~0.79); one holdout question fell just
+        # under this threshold. Recalibrate on each client's corpus.
+        gate=GateThresholds(vec_hi=0.80, vec_lo=0.80, kw_coverage=0.0),
+        gate_calibrated=True,
     ),
     2: EmbeddingProfile(
         id=2,
@@ -57,7 +61,11 @@ PROFILES: dict[int, EmbeddingProfile] = {
         model="gemini-embedding-2",
         dimension=768,
         max_input_tokens=8192,
-        gate=GateThresholds(vec_hi=0.75, vec_lo=0.55, kw_coverage=0.5),
+        # Calibrated by evals/run.py (docs/evals/2026-11-15-baseline.md; 0.59-0.60 across runs):
+        # off-topic questions scored 0.52-0.56, answerable ones 0.63 and above. Recalibrate
+        # per client.
+        gate=GateThresholds(vec_hi=0.60, vec_lo=0.60, kw_coverage=0.0),
+        gate_calibrated=True,
     ),
     3: EmbeddingProfile(
         id=3,

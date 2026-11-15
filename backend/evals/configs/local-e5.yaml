@@ -1,0 +1,10 @@
+name: local-e5
+description: Local embeddings (multilingual-e5-small on CPU via ONNX, no API cost) with Flash-Lite answers. Requires the embedder service.
+embedding_profile: 1
+chunking: {}
+top_k: 6
+candidates: 30
+llm_model: gemini-3.5-flash-lite
+cheap_model: gemini-3.5-flash-lite
+calibrate: true
+judge: true

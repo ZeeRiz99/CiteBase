@@ -21,6 +21,16 @@ COPY . .
 USER app
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
 
+FROM base AS embedder
+# Local embedding service (Compose profile "local-embeddings"): ONNX Runtime on CPU.
+ENV HF_HOME=/models
+RUN uv sync --frozen --no-dev --group embedder --no-install-project \
+    && mkdir -p /models && chown app:app /models
+COPY app ./app
+USER app
+EXPOSE 8001
+CMD ["uvicorn", "app.embedder.main:app", "--host", "0.0.0.0", "--port", "8001"]
+
 FROM base AS prod
 RUN uv sync --frozen --no-dev --no-install-project \
     && python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"

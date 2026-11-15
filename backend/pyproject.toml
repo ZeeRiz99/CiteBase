@@ -45,6 +45,8 @@ embedder = [
 
 [tool.uv]
 package = false
+# The dev image also gets the embedder group so the local embedding service is type-checked and tested.
+default-groups = ["dev", "embedder"]
 # Supply-chain hygiene: resolve only releases published before this date.
 exclude-newer = "2026-10-31T00:00:00Z"
 # Security fixes published after the cutoff are allowed per package (found by pip-audit).
@@ -69,6 +71,7 @@ known-third-party = ["alembic"]
 "tests/**" = ["S105", "S106", "S107", "PLR0915", "RUF001"]  # RUF001: real-world unicode in fixtures
 "app/services/emails.py" = ["E501"]  # inline-styled HTML email markup
 "app/rag/prompting.py" = ["E501"]  # prompt prose: wording is behaviour, keep it unwrapped
+"evals/**" = ["E501", "S311"]  # report/markdown templates; eval-only code
 "alembic/**" = ["E501"]
 
 [tool.mypy]
@@ -82,7 +85,7 @@ module = ["tests.*"]
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = ["pypdfium2", "pypdfium2.*"]  # ships without type information
+module = ["pypdfium2", "pypdfium2.*", "onnxruntime", "onnxruntime.*"]  # ship without type info
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

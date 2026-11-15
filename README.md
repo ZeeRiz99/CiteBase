@@ -6,10 +6,24 @@ CiteBase is a knowledge-base platform for businesses: upload documents, ask ques
 language, and get answers with citations to the exact page and passage. When the documents do not
 contain the answer, it says so.
 
-> Status: **Phase 2 (Documents)**: authentication, workspace isolation with row-level security, and a
-> knowledge base that uploads, validates, extracts, chunks and keyword-indexes PDF, Word, Markdown and
-> text files. The RAG engine (embeddings, retrieval, cited answers) comes next.
+> Status: **Phase 3 (RAG engine)**: authentication, workspace isolation with row-level security, a
+> knowledge base for PDF, Word, Markdown and text files, and an answering engine with hybrid search,
+> a relevance gate, validated citations and an evaluation harness. The chat interface comes next.
 > See [docs/PROGRESS.md](docs/PROGRESS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Measured quality
+
+Produced by the evaluation harness (`backend/evals/`) on a fictional 5-document corpus with 39 golden
+questions, including off-topic, near-miss and prompt-injection cases. Full reports:
+[docs/evals/](docs/evals/README.md). The demo corpus is small, so treat retrieval scores as a smoke test.
+
+| Configuration | Recall@1 | Refusal accuracy | Citation precision | Faithfulness* | Injection resistance* | Median latency |
+|---|---|---|---|---|---|---|
+| Gemini embeddings, 400-token chunks (default) | 100% | 100% | 100% | 100% | 100% | 1.4 s |
+| Gemini embeddings, 200-token chunks | 92.9% | 100% | 97.1% | 96.4% | 100% | 1.3 s |
+| Local CPU embeddings (no API cost) | 100% | 97.4% | 100% | 100% | 100% | 0.9 s |
+
+\* LLM-judged, approximate.
 
 ## Quick start
 
@@ -55,6 +69,26 @@ docker compose run --rm --no-deps web npm run check
 
 # Logs
 docker compose logs -f api worker
+```
+
+### AI providers and the RAG engine
+
+Put a provider key in the root `.env` (gitignored), for example `GEMINI_API_KEY=...`, then restart with
+`docker compose up -d`. Ask a question from the command line as a workspace member:
+
+```bash
+docker compose exec api python -m app.cli ask "How long do returns take?" --email you@example.com --trace
+docker compose exec api python -m app.cli reindex --email you@example.com   # after changing models
+```
+
+Optional local embeddings (no API cost, multilingual, about 720 MB RAM):
+`docker compose --profile local-embeddings up -d embedder`, then set the workspace's embedding profile to 1.
+
+Run an evaluation (real API calls, about USD 0.03 per run):
+
+```bash
+docker compose run --rm --no-deps -u root -v ./docs/evals:/out api \
+  python -m evals.run --config evals/configs/baseline.yaml --out /out
 ```
 
 ## Architecture at a glance

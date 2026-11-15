@@ -246,6 +246,7 @@ wheels = [
 name = "citebase-backend"
 version = "0.1.0"
 source = { virtual = "." }
+default-groups = ["dev", "embedder"]
 dependencies = [
     { name = "aiosmtplib" },
     { name = "alembic" },
