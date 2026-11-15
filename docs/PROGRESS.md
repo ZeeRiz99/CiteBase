@@ -1,8 +1,8 @@
-# CiteBase: progress log
+﻿# CiteBase: progress log
 
 ## Current status
 
-**Phase 2 (Documents): complete on branch `phase-2/documents`, awaiting approval.** Phase 1 was closed on 2026-11-14 (tag `phase-1`). Next: Phase 3 (RAG engine and evals).
+**Phase 2 (Documents): approved and closed on 2026-11-15** (merged to `main`, tag `phase-2`). **Phase 3 (RAG engine and evals): in progress** on `phase-3/rag-engine`. Phase 1 was closed on 2026-11-14 (tag `phase-1`). Next: Phase 3 (RAG engine and evals).
 
 ## Completed
 
