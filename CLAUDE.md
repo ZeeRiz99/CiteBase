@@ -7,6 +7,8 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 ## Working rules (standing)
 
 - **Gated phases.** Never start a phase before the user approves it. Each phase ends with working, tested, committed code, a short summary, files touched, test output, manual verification commands, and an update to PROGRESS.md and this file. Then stop.
+- **Known limits go to `docs/BACKLOG.md`** (one section per phase) and are fixed together after the last build phase, per the user (2026-11-15). Do not fix them mid-phase.
+- **Secrets never in chat or git.** API keys go in the gitignored root `.env`; code reads them from the environment.
 - **Inspect before writing.** Check the environment and existing files first. Never overwrite or delete work without saying why.
 - **Evidence over claims.** Never say something works without running it and seeing the output. Find the root cause before changing code. No fake integrations. Demo data only from the labeled seed script.
 - **Verify dependencies.** Check current versions and docs before pinning (Next.js, shadcn/ui, pgvector clients, provider SDKs change fast). Every new dependency gets a one-line reason in the PR or commit.
