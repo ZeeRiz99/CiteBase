@@ -22,6 +22,7 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 - Windows 11, PowerShell 5.1; **7.8 GB RAM**, i5-8365U, no GPU. Keep the stack lean.
 - WSL2 Ubuntu 26.04 (user `dell`). Native Postgres 18 runs in WSL on :5432; leave it alone. **Compose Postgres uses host port 5433.**
 - Docker Engine 29 + Compose 2.40 installed inside WSL (not Docker Desktop); `.wslconfig` gives WSL 5 GB. Containers use Python 3.12 and Node 24.
+- (2026-11-16) The WSL disk lives at `D:\WSL\Ubuntu\ext4.vhdx` (moved from C: with `wsl --manage Ubuntu --move` after a build filled C: to 0 bytes and crashed WSL). Watch free space on both drives before large builds; `docker builder prune -f` clears the build cache.
 - Repo lives at `D:\Projects\citebase` (WSL path `/mnt/d/Projects/citebase`), where the user keeps all projects; dev containers use polling file watchers.
 - Assumed (user did not answer Phase 0 questions): English-first FTS, one deployment per client (branding via env and build args), no LLM keys needed until Phase 3.
 
