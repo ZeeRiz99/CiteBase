@@ -6,9 +6,11 @@ CiteBase is a knowledge-base platform for businesses: upload documents, ask ques
 language, and get answers with citations to the exact page and passage. When the documents do not
 contain the answer, it says so.
 
-> Status: **Phase 3 (RAG engine)**: authentication, workspace isolation with row-level security, a
-> knowledge base for PDF, Word, Markdown and text files, and an answering engine with hybrid search,
-> a relevance gate, validated citations and an evaluation harness. The chat interface comes next.
+> Status: **Phase 4 (chat and source viewer)**: authentication, workspace isolation with row-level
+> security, a knowledge base for PDF, Word, Markdown and text files, an answering engine with hybrid
+> search, a relevance gate, validated citations and an evaluation harness, and a streaming chat with
+> clickable citations, a source viewer that highlights the cited passage, feedback, an unanswered
+> questions queue and an admin "why this answer?" trace. Polish and release come next.
 > See [docs/PROGRESS.md](docs/PROGRESS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Measured quality
@@ -54,6 +56,11 @@ Then open **Knowledge base** and drag in the files from [`samples/`](samples/) (
 documents). Within seconds five show **Ready** and the scanned PDF shows **Needs OCR**; open a document
 to see how it was split into passages.
 
+Open **Chat** (an AI provider key is required, see below) and ask, for example, "How long do I have to
+return an item?". The answer streams with numbered citations: hover one for a preview, click it to open
+the passage highlighted in its document. Ask something the documents do not cover and CiteBase says so;
+admins find those questions under **Unanswered** and can open "Why this answer?" on any answer.
+
 ## Development
 
 The default `docker compose up` loads `compose.override.yaml`: source is bind-mounted, the API and
@@ -69,6 +76,19 @@ docker compose run --rm --no-deps web npm run check
 
 # Logs
 docker compose logs -f api worker
+```
+
+### End-to-end test
+
+One Playwright golden-path test (register, upload, ask, open the cited passage, rate, off-topic
+refusal, unanswered queue, PDF highlight) runs against the running stack in a small Chromium image, so no
+browser is installed locally. It uses the configured AI provider (a fraction of a US cent per run).
+
+```bash
+docker build -t citebase-e2e:1.64.1 -f frontend/e2e.Dockerfile frontend   # once
+docker run --rm --network host --ipc=host \
+  -v "$PWD":/repo -v citebase_web_node_modules:/repo/frontend/node_modules -w /repo/frontend \
+  citebase-e2e:1.64.1 npx playwright test
 ```
 
 ### AI providers and the RAG engine

@@ -1,6 +1,18 @@
 "use client";
 
-import { AlertTriangle, Building2, CheckCircle2, Circle, FileCheck2, Files, Loader2, Upload } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  Circle,
+  FileCheck2,
+  Files,
+  Loader2,
+  MessageCircleQuestion,
+  MessagesSquare,
+  ThumbsUp,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -9,7 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMe } from "@/lib/auth";
+import { hasRole, useMe } from "@/lib/auth";
+import { useUsage } from "@/lib/chat";
 import { useDashboardSummary } from "@/lib/documents";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", member: "Member", viewer: "Viewer" } as const;
@@ -17,10 +30,13 @@ const ROLE_LABEL = { owner: "Owner", admin: "Admin", member: "Member", viewer: "
 export function DashboardView() {
   const { data: me } = useMe();
   const summary = useDashboardSummary();
+  const isAdmin = hasRole(me?.role, "admin");
+  const usage = useUsage(isAdmin);
   const resend = useResendVerification();
   if (!me) return null; // the app shell renders the loading state
 
   const docs = summary.data?.documents;
+  const questions = summary.data?.questions;
   const firstName = me.user.full_name.split(" ")[0];
   const steps: { label: string; done: boolean; action?: ReactNode }[] = [
     { label: "Create your workspace", done: true },
@@ -40,6 +56,17 @@ export function DashboardView() {
         <Button size="sm" asChild>
           <Link href="/knowledge-base">
             <Upload aria-hidden /> Upload
+          </Link>
+        </Button>
+      ),
+    },
+    {
+      label: "Ask your first question",
+      done: (questions?.last_30d ?? 0) > 0,
+      action: (
+        <Button size="sm" asChild>
+          <Link href="/chat">
+            <MessagesSquare aria-hidden /> Ask
           </Link>
         </Button>
       ),
@@ -65,6 +92,33 @@ export function DashboardView() {
           loading={summary.isPending}
           tone={(docs?.attention ?? 0) > 0 ? "amber" : undefined}
           href={(docs?.attention ?? 0) > 0 ? "/knowledge-base" : undefined}
+        />
+      </section>
+
+      <section aria-label="Question statistics" className="grid gap-4 sm:grid-cols-3">
+        <Stat
+          label="Questions, last 7 days"
+          value={questions?.last_7d}
+          icon={<MessagesSquare className="size-4" aria-hidden />}
+          loading={summary.isPending}
+          href="/chat"
+        />
+        <Stat
+          label="Unanswered, open"
+          value={questions?.unanswered_open}
+          icon={<MessageCircleQuestion className="size-4" aria-hidden />}
+          loading={summary.isPending}
+          tone={(questions?.unanswered_open ?? 0) > 0 ? "amber" : undefined}
+          href={isAdmin ? "/unanswered" : undefined}
+        />
+        <Stat
+          label={questions?.rated ? `Rated helpful ( rated)` : "Rated helpful"}
+          value={questions?.helpful_rate === null || questions?.helpful_rate === undefined ? undefined : Math.round(questions.helpful_rate * 100)}
+          suffix={questions?.helpful_rate === null ? undefined : "%"}
+          empty="No ratings yet"
+          icon={<ThumbsUp className="size-4" aria-hidden />}
+          loading={summary.isPending}
+          tone="teal"
         />
       </section>
 
@@ -122,12 +176,42 @@ export function DashboardView() {
                 {ROLE_LABEL[me.role]}
               </Badge>
             </div>
+            {isAdmin && usage.data ? <UsageMeter used={usage.data.tokens_used} limit={usage.data.token_limit} /> : null}
             <p className="text-xs text-muted-foreground">
               Your data is isolated from every other workspace at the database level.
             </p>
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+
+function UsageMeter({ used, limit }: { used: number; limit: number | null }) {
+  const share = limit ? Math.min(1, used / limit) : 0;
+  return (
+    <div className="grid gap-1.5">
+      <p className="text-muted-foreground">AI usage this month</p>
+      <p className="font-medium text-navy-900">
+        {compact.format(used)} tokens{limit ? ` of ${compact.format(limit)}` : " (no limit)"}
+      </p>
+      {limit ? (
+        <div
+          className="h-1.5 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label="AI usage this month"
+          aria-valuemin={0}
+          aria-valuemax={limit}
+          aria-valuenow={used}
+        >
+          <div
+            className={share > 0.9 ? "h-full rounded-full bg-warning" : "h-full rounded-full bg-teal-600"}
+            style={{ width: `${Math.max(share * 100, used > 0 ? 2 : 0)}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -139,6 +223,8 @@ function Stat({
   loading,
   tone,
   href,
+  suffix,
+  empty,
 }: {
   label: string;
   value: number | undefined;
@@ -146,6 +232,8 @@ function Stat({
   loading: boolean;
   tone?: "teal" | "amber";
   href?: string;
+  suffix?: string;
+  empty?: string; // shown instead of 0 when there is no value yet
 }) {
   const body = (
     <Card className="h-full gap-2 py-4 shadow-soft">
@@ -154,7 +242,16 @@ function Stat({
           <span className={tone === "teal" ? "text-teal-700" : tone === "amber" ? "text-warning" : "text-navy-600"}>{icon}</span>
           {label}
         </p>
-        {loading ? <Skeleton className="h-8 w-12" /> : <p className="text-3xl font-semibold text-navy-900">{value ?? 0}</p>}
+        {loading ? (
+          <Skeleton className="h-8 w-12" />
+        ) : value === undefined && empty ? (
+          <p className="py-1.5 text-sm text-muted-foreground">{empty}</p>
+        ) : (
+          <p className="text-3xl font-semibold text-navy-900">
+            {value ?? 0}
+            {suffix ? <span className="text-xl">{suffix}</span> : null}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

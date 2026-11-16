@@ -8,11 +8,11 @@ import { useEffect, type ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
 import { UserMenu } from "@/components/app/user-menu";
 import { VerifyEmailBanner } from "@/components/app/verify-email-banner";
-import { NAV_ITEMS, isActive } from "@/components/app/nav-items";
+import { NAV_ITEMS, isActive, type NavItem } from "@/components/app/nav-items";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isApiError } from "@/lib/api";
-import { useMe, type Me } from "@/lib/auth";
+import { hasRole, useMe, type Me } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -42,13 +42,25 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (!me) return <ShellSkeleton />;
 
+  const items = NAV_ITEMS.filter((item) => !item.minRole || hasRole(me.role, item.minRole));
+  // Chat fills the viewport (three panes that scroll on their own) instead of the page column.
+  const fullBleed = pathname === "/chat" || pathname.startsWith("/chat/");
+
   return (
-    <div className="flex min-h-screen">
-      <Sidebar pathname={pathname} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar me={me} pathname={pathname} />
+    <div className={cn("flex", fullBleed ? "h-dvh overflow-hidden" : "min-h-screen")}>
+      <Sidebar pathname={pathname} items={items} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <Topbar me={me} pathname={pathname} items={items} />
         {!me.user.email_verified ? <VerifyEmailBanner email={me.user.email} /> : null}
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 animate-fade-in px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+        <main
+          id="main"
+          className={cn(
+            "w-full flex-1 animate-fade-in",
+            fullBleed
+              ? "flex min-h-0 flex-col"
+              : "mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10",
+          )}
+        >
           {children}
         </main>
       </div>
@@ -56,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Sidebar({ pathname }: { pathname: string }) {
+function Sidebar({ pathname, items }: { pathname: string; items: NavItem[] }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground lg:flex">
       <div className="flex h-16 items-center px-5">
@@ -65,7 +77,7 @@ function Sidebar({ pathname }: { pathname: string }) {
         </Link>
       </div>
       <nav aria-label="Main" className="grid gap-1 px-3 py-4">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link
@@ -89,7 +101,7 @@ function Sidebar({ pathname }: { pathname: string }) {
   );
 }
 
-function Topbar({ me, pathname }: { me: Me; pathname: string }) {
+function Topbar({ me, pathname, items }: { me: Me; pathname: string; items: NavItem[] }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75">
       <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-10">
@@ -104,7 +116,7 @@ function Topbar({ me, pathname }: { me: Me; pathname: string }) {
         </div>
       </div>
       <nav aria-label="Main" className="flex gap-1 overflow-x-auto px-4 pb-2 sm:px-6 lg:hidden">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link

@@ -18,6 +18,13 @@ export type Me = {
 
 export type Message = { message: string };
 
+const ROLE_RANK: Record<Role, number> = { viewer: 0, member: 1, admin: 2, owner: 3 };
+
+/** UI hint only: the server enforces every role check. */
+export function hasRole(role: Role | undefined, minimum: Role): boolean {
+  return role !== undefined && ROLE_RANK[role] >= ROLE_RANK[minimum];
+}
+
 export const meQueryKey = ["me"] as const;
 
 export function useMe() {
