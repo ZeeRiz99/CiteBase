@@ -57,6 +57,12 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 - (Phase 3) Gate thresholds live in `app/rag/profiles.py` and must come from an eval report; never hand-tune on the holdout split.
 - (Phase 3) Local embeddings: `docker compose --profile local-embeddings up -d embedder` (about 720 MB RAM; stop it when not needed).
 - (Phase 3) Verify provider APIs with a small probe script before coding against them; model names and prices change (prices only from the official page, in `app/core/pricing.py`).
+- (Phase 4) FastAPI and other libraries ship their own docs in the installed package (`fastapi/.agents/skills/fastapi/references/`, `next/dist/docs/`, `react-pdf/README.md`): read those, not memory. react-pdf 11 uses Suspense by default; we pass `suspense={false}`.
+- (Phase 4) Chat SSE uses `app/api/sse.EventStreamResponse` (closes the generator on disconnect). Do every check in `ChatService.prepare_*` before streaming; never raise HTTP errors from inside the stream.
+- (Phase 4) Tests swap AI providers through `app.state.engine_factory` and `app.state.cheap_llm_factory` (see `tests/integration/test_chat.py`); stop/cancel behaviour is tested at the service level.
+- (Phase 4) `npm view` ignores `--before`: read `npm view <pkg> time --json` to pick versions published before the cutoff.
+- (Phase 4) The dev web container sets `NODE_ENV=development`, which breaks `next build` (`/_global-error` useContext error). Verify the build with `docker compose -f compose.yaml build web`.
+- (Phase 4) E2E: build `frontend/e2e.Dockerfile` (Chromium only; mcr.microsoft.com pulls time out here) and run `npx playwright test` in it with `--network host`, mounting the `citebase_web_node_modules` volume (README). Set `E2E_SCREENSHOTS=<dir>` to save review screenshots and look at them.
 
 ## Multi-tenancy and security (non-negotiable)
 

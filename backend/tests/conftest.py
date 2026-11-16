@@ -25,6 +25,13 @@ from app.worker.runner import run_once
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "")
 TEST_MIGRATIONS_DATABASE_URL = os.environ.get("TEST_MIGRATIONS_DATABASE_URL", "")
 TABLES = (
+    "usage_events",
+    "unanswered_questions",
+    "feedback",
+    "message_sources",
+    "messages",
+    "conversations",
+    "chunk_embeddings",
     "chunks",
     "document_pages",
     "document_versions",

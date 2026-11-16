@@ -192,3 +192,68 @@
     }
   }
 }
+
+/* Answer text: Markdown from the model, rendered without raw HTML. */
+@layer components {
+  .answer-prose {
+    @apply text-[15px] leading-7 text-slate-body;
+  }
+  .answer-prose > * + * {
+    @apply mt-3;
+  }
+  .answer-prose ul {
+    @apply list-disc pl-5;
+  }
+  .answer-prose ol {
+    @apply list-decimal pl-5;
+  }
+  .answer-prose li + li {
+    @apply mt-1;
+  }
+  .answer-prose strong {
+    @apply font-semibold text-navy-900;
+  }
+  .answer-prose h1,
+  .answer-prose h2,
+  .answer-prose h3 {
+    @apply text-base font-semibold text-navy-900;
+  }
+  .answer-prose code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-[13px];
+  }
+  .answer-prose table {
+    @apply block w-full overflow-x-auto text-sm;
+  }
+  .answer-prose th,
+  .answer-prose td {
+    @apply border px-2 py-1 text-left;
+  }
+  .answer-prose blockquote {
+    @apply border-l-2 border-teal-500 pl-3 text-muted-foreground;
+  }
+
+  /* Cited passage inside the PDF text layer (the layer's text is transparent). */
+  .react-pdf__Page__textContent mark.cb-hl {
+    background: rgb(20 184 166 / 0.32);
+    color: transparent;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgb(13 148 136 / 0.35);
+  }
+}
+
+/* Blinking caret at the end of an answer that is still being written. */
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.streaming-caret .answer-prose > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--color-teal-600);
+  animation: caret-blink 1s steps(1) infinite;
+}

@@ -70,6 +70,7 @@ export type StatusFilter = "all" | "processing" | "indexed" | "attention";
 
 export type DashboardSummary = {
   documents: { total: number; processing: number; indexed: number; attention: number };
+  questions: { last_7d: number; last_30d: number; unanswered_open: number; helpful_rate: number | null; rated: number };
 };
 
 export const documentKeys = {

@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     rag_candidates: int = Field(default=30, ge=5, le=100)  # per search method, before fusion
     rag_top_k: int = Field(default=6, ge=1, le=20)
 
+    # Chat
+    chat_rate_per_minute: int = Field(default=20, gt=0)  # questions per user per minute
+    # Answer + rewrite tokens per workspace per calendar month (UTC). A workspace's own
+    # monthly_token_limit overrides it; 0 means unlimited.
+    monthly_token_limit: int = Field(default=2_000_000, ge=0)
+    chat_history_turns: int = Field(default=6, ge=0, le=20)  # prior messages used for follow-ups
+    max_question_chars: int = Field(default=2000, gt=0)
+
     @field_validator("secret_key")
     @classmethod
     def _secret_key_strength(cls, value: SecretStr) -> SecretStr:

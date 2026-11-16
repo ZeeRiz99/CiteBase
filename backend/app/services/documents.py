@@ -24,7 +24,7 @@ from app.ingestion.validation import (
     inspect_file,
     sanitize_filename,
 )
-from app.models import Chunk, Document, DocumentStatus, DocumentVersion
+from app.models import Chunk, Document, DocumentPage, DocumentStatus, DocumentVersion
 from app.providers.storage import Storage
 from app.repositories import documents as docs_repo
 from app.repositories import system as system_repo
@@ -350,5 +350,34 @@ class DocumentService:
     async def counts(self) -> dict[str, int]:
         return await docs_repo.status_counts(self.db, self.workspace_id)
 
+    async def chunk_context(self, chunk_id: uuid.UUID) -> ChunkContext:
+        """A cited passage with its neighbours and page text, for the source viewer.
 
-__all__ = ["ALLOWED_TYPES", "DocumentService", "DownloadTarget"]
+        Works for passages of older versions too (old answers cite them); deleted documents
+        are gone.
+        """
+        chunk = await docs_repo.get_chunk(self.db, self.workspace_id, chunk_id)
+        if chunk is None:
+            raise NotFound("This passage is no longer available.")
+        document, _latest = await self._require(chunk.document_id)
+        version = await docs_repo.get_version(self.db, self.workspace_id, chunk.document_version_id)
+        if version is None:
+            raise NotFound("This passage is no longer available.")
+        previous, following = await docs_repo.neighbor_chunks(self.db, chunk)
+        pages = await docs_repo.pages_between(
+            self.db, version.id, max(1, chunk.page_start - 1), chunk.page_end + 1
+        )
+        return ChunkContext(chunk, document, version, previous, following, pages)
+
+
+@dataclass(frozen=True)
+class ChunkContext:
+    chunk: Chunk
+    document: Document
+    version: DocumentVersion
+    previous: Chunk | None
+    following: Chunk | None
+    pages: list[DocumentPage]
+
+
+__all__ = ["ALLOWED_TYPES", "ChunkContext", "DocumentService", "DownloadTarget"]

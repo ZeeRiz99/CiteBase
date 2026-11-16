@@ -647,6 +647,24 @@ docker run --rm hello-world && docker compose version
 | Merged-section labels | A chunk spanning several sections is labelled "Parent > First to Last" | Citations must not name only the first section of a merged chunk (found by the eval) |
 | Cost | `app/core/pricing.py` holds only officially read prices with source and date; unknown models show "price not configured" | No invented numbers |
 
+### Decisions made during Phase 4
+
+| Topic | Decision | Why |
+|---|---|---|
+| SSE transport | A Starlette `StreamingResponse` subclass (`app/api/sse.py`) that always `aclose()`s the body generator, shielded; not FastAPI 0.162's native `EventSourceResponse` | The native path iterates the generator in a producer task that is not closed deterministically on disconnect, so "save the stopped answer" could run late or never |
+| Turn lifecycle | All checks (ownership, one turn per conversation, per-user rate limit, monthly token limit, provider configured, question length) run **before** the first byte, so they return normal JSON errors; the stream commits right after retrieval | No transaction is held while the model writes; clients get real HTTP status codes for refusals to start |
+| Stop | The client aborts the request; the server saves the partial text as `stopped` with only valid citations, and estimates its tokens with tiktoken (`usage_events.estimated = true`) because providers report usage only at the end | Stopped answers are still accountable; costs are never silently dropped |
+| Sources | `message_sources` stores a snapshot (title, location, snippet, scores) of **every** passage sent to the model; `cited` marks validated ones. Purging a document blanks those snippets (FKs become NULL) | Old answers keep their citation labels; purged text is gone everywhere |
+| Regenerate | A new assistant message with `regenerated_from_id`; the thread hides superseded answers. Only the latest finished answer can be regenerated | History stays auditable; no mutation of a rated answer |
+| Usage limit | `usage_events` per LLM call (`chat`, `rewrite`, `regenerate`, `suggest`) with cost from `pricing.py`; monthly limit = workspace `monthly_token_limit` or `MONTHLY_TOKEN_LIMIT` (default 2,000,000; 0 = unlimited) | Per-workspace spend control without billing; embedding tokens are not metered yet (backlog) |
+| Suggested questions | The cheap model writes one question per real passage (6 most recent documents); cached in `workspaces.settings` keyed by the set of indexed versions; failures return `[]` and are not cached | Suggestions are answerable by construction and cost one call per document change |
+| Passage context | `GET /chunks/{id}/context`: chunk, neighbours and the page texts around it; works for passages of older versions | Text formats highlight by exact stored offsets; the PDF viewer has a text fallback |
+| PDF highlight | react-pdf 11 (`suspense={false}`, worker via `new URL(..., import.meta.url)`), text-layer items matched with normalised 24-char anchors (`lib/highlight.ts`); whole items are highlighted; weak matches outline the page and open the text passage | pdf.js and pdfplumber text never match character for character |
+| Chat routing | One page `app/(app)/chat/[[...id]]`; switching conversations uses `history.pushState` (synced with `usePathname`) | A streaming answer is never remounted when the URL gains its conversation id |
+| Answer rendering | react-markdown + remark-gfm, no raw HTML, images disallowed, links only `http(s)` with `rel=noopener noreferrer nofollow`; `[n]` markers become citation chips | Model output is untrusted |
+| Dashboard | Question counts (7 d / 30 d), open unanswered, helpful rate and an admin usage meter come from `/dashboard/summary` and `/workspace/usage`; the planned `/dashboard/activity` feed is deferred | Real numbers only; the feed adds little for one-user workspaces |
+| E2E | One Playwright golden-path test (`frontend/tests/e2e`) in a slim Chromium-only image (`frontend/e2e.Dockerfile`, Playwright 1.64.1) against the running stack, with the real provider | No browser install on the laptop; the official 2 GB image would not download here; tests what users get |
+
 ## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*
