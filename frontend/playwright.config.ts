@@ -16,6 +16,8 @@ export default defineConfig({
   outputDir: "./tests/e2e/.results",
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:8080",
+    // For a local HTTPS check (Caddy's self-signed certificate for "localhost").
+    ignoreHTTPSErrors: process.env.E2E_IGNORE_HTTPS_ERRORS === "1",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
