@@ -9,6 +9,12 @@ async function shot(page: Page, name: string) {
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${name}.png`), fullPage: false });
 }
 
+// Click the sheet's own Close button (Escape can be taken by an open hover preview first).
+async function closeSheet(page: Page) {
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+}
+
 test("register, upload, ask, verify the citation, refuse off-topic", async ({ page }) => {
   const email = `e2e-${Date.now()}@example.com`;
 
@@ -50,7 +56,7 @@ test("register, upload, ask, verify the citation, refuse off-topic", async ({ pa
   // The passage may span several sections (one highlight each); one of them holds the rule.
   await expect(sheet.locator("mark", { hasText: /30 days/i })).toBeVisible();
   await shot(page, "03-source");
-  await page.keyboard.press("Escape");
+  await closeSheet(page);
 
   // 5. Rate the answer; the rating sticks after a reload.
   await answer.getByRole("button", { name: "Helpful", exact: true }).click();
@@ -67,7 +73,7 @@ test("register, upload, ask, verify the citation, refuse off-topic", async ({ pa
   await expect(pdfSheet.locator(".react-pdf__Page canvas")).toBeVisible();
   await expect(pdfSheet.locator("mark.cb-hl").first()).toBeVisible();
   await shot(page, "03b-pdf-source");
-  await page.keyboard.press("Escape");
+  await closeSheet(page);
 
   // 6. An off-topic question is refused, not guessed.
   await composer.fill("Who won the football world cup in 1998?");

@@ -16,6 +16,11 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: path.join(OUT!, `${name}.png`) });
 }
 
+async function closeSheet(page: Page) {
+  await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+}
+
 test("capture README screenshots", async ({ page }) => {
   await page.goto("/");
   await capture(page, "landing");
@@ -44,12 +49,12 @@ test("capture README screenshots", async ({ page }) => {
   await chip.click();
   await expect(page.getByRole("dialog").locator("mark").first()).toBeVisible();
   await capture(page, "source-viewer");
-  await page.keyboard.press("Escape");
+  await closeSheet(page);
 
   await answer.getByRole("button", { name: "Why this answer?" }).click();
   await expect(page.getByRole("dialog").getByText("Relevance check")).toBeVisible();
   await capture(page, "answer-trace");
-  await page.keyboard.press("Escape");
+  await closeSheet(page);
 
   await composer.fill("What is our policy on company cars?");
   await composer.press("Enter");
