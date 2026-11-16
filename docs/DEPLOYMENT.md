@@ -137,7 +137,7 @@ docker compose run --rm --no-deps -u root -v "$PWD/backups":/backup --entrypoint
 **Restore** onto a fresh install (same `.env`):
 
 ```bash
-docker compose up -d postgres
+docker compose up -d --wait postgres     # --wait: until first-start setup has finished
 docker compose exec -T postgres pg_restore -U postgres -d citebase --clean --if-exists < backups/db-YYYY-MM-DD.dump
 docker compose run --rm --no-deps -u root -v "$PWD/backups":/backup --entrypoint sh api \
   -c "tar -xzf /backup/storage-YYYY-MM-DD.tgz -C /data/storage"

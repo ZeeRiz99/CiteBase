@@ -48,7 +48,9 @@ services:
     ports:
       - "127.0.0.1:5433:5432"   # 5432 is taken by the native WSL Postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d citebase"]
+      # Over TCP: during first-start setup Postgres runs a temporary server on the socket only,
+      # which would otherwise report "ready" just before it restarts.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d citebase"]
       interval: 3s
       timeout: 3s
       retries: 30

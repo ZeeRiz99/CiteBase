@@ -52,7 +52,7 @@ test("capture README screenshots", async ({ page }) => {
   await closeSheet(page);
 
   await answer.getByRole("button", { name: "Why this answer?" }).click();
-  await expect(page.getByRole("dialog").getByText("Relevance check")).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: "Relevance check" })).toBeVisible();
   await capture(page, "answer-trace");
   await closeSheet(page);
 
