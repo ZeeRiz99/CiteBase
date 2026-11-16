@@ -1,0 +1,36 @@
+# Production overlay for a server with a domain name. See docs/DEPLOYMENT.md.
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+# (Never combine with compose.override.yaml, the development overlay.)
+
+x-production-env: &production-env
+  ENVIRONMENT: production
+
+services:
+  postgres:
+    ports: !reset []   # reachable only inside the Docker network
+
+  mailpit:
+    profiles: ["dev-mail"]   # not started in production: configure real SMTP in .env
+
+  migrate:
+    environment: *production-env
+  api:
+    environment: *production-env
+  worker:
+    environment: *production-env
+
+  caddy:
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS to your domain in .env}
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # TLS certificates: keep across restarts
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

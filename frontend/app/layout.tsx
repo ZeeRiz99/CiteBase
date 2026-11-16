@@ -9,6 +9,7 @@ import "./globals.css";
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(branding.siteUrl),
   title: { default: `${branding.productName}: ${branding.tagline}`, template: `%s · ${branding.productName}` },
   description:
     "Upload your business documents and get answers in plain language, with citations to the exact page and passage.",
