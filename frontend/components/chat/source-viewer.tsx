@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage, isApiError } from "@/lib/api";
 import { sourceLocation, useChunkContext, type ChunkContext, type Source } from "@/lib/chat";
-import { fileTypeLabel } from "@/lib/format";
+import { fileTypeLabel, IMAGE_EXTS } from "@/lib/format";
 
 // pdf.js needs the browser (canvas, workers): never rendered on the server.
 const PdfPassage = dynamic(() => import("@/components/chat/pdf-passage"), {
@@ -50,12 +50,14 @@ export function SourceViewerBody({ chunkId }: { chunkId: string }) {
 
   const context = query.data;
   const isPdf = context.document.file_ext === ".pdf";
+  const isImage = IMAGE_EXTS.has(context.document.file_ext);
+  const scanned = context.document.ocr_pages > 0;
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" asChild>
           <a href={fileUrl(context)} target="_blank" rel="noopener">
-            <Download aria-hidden /> {isPdf ? "Open original" : `Download ${fileTypeLabel(context.document.file_ext)}`}
+            <Download aria-hidden /> {isPdf || isImage ? "Open original" : `Download ${fileTypeLabel(context.document.file_ext)}`}
           </a>
         </Button>
         <Button variant="ghost" size="sm" asChild>
@@ -86,8 +88,9 @@ export function SourceViewerBody({ chunkId }: { chunkId: string }) {
           />
           {pdfMatch && !pdfMatch.matched ? (
             <p className="text-sm text-muted-foreground" role="status">
-              The exact lines could not be pinpointed on this page (the PDF&apos;s text layout differs). The cited
-              passage is shown below.
+              {scanned
+                ? "This page is a scan, so the lines cannot be marked on the image. The cited passage, as read by text recognition, is shown below."
+                : "The exact lines could not be pinpointed on this page (the PDF's text layout differs). The cited passage is shown below."}
             </p>
           ) : null}
           <details className="rounded-lg border bg-muted/40 p-3" open={pdfMatch?.matched === false}>
@@ -96,6 +99,13 @@ export function SourceViewerBody({ chunkId }: { chunkId: string }) {
               <TextPassage context={context} unitLabel="Page" />
             </div>
           </details>
+        </>
+      ) : isImage ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- authenticated API file, not a static asset */}
+          <img src={fileUrl(context)} alt={`Original image: ${context.document.title}`} className="w-full rounded-lg border bg-white" />
+          <p className="text-sm text-muted-foreground">Text read from the image by text recognition:</p>
+          <TextPassage context={context} unitLabel="Page" />
         </>
       ) : (
         <TextPassage context={context} unitLabel="Section" />

@@ -38,16 +38,25 @@ the groups below; the original phase lists follow with each item's outcome.
 - [ ] Meter embedding tokens and cost (estimated with the tokenizer, labeled "estimated"); decide
       whether they count against the monthly AI allowance.
 - [ ] Generation timeout with a fallback model, after measuring latency percentiles.
+- [ ] Occasional false refusal by the answer model: once in 21 tries (2026-11-17), Flash-Lite refused "How many days do I have to return a regular item?" although the relevance gate passed with strong evidence (the same workspace then answered 10 of 10). Retry once when the gate is strong but the model refuses, and count these in the trace.
 - [ ] Heading detection in PDFs (font size and weight) so PDF passages get section titles.
 - [ ] Deterministic CI stack for the e2e tests (fake providers), so they run on every push.
 - [ ] Settings: show this month's AI usage next to the allowance for admins.
+
+### OCR follow-ups
+
+- [ ] Highlight recognized passages on the scan image itself (store Tesseract word boxes per page).
+- [ ] Automatic page rotation for upside-down or sideways scans (Tesseract orientation detection).
+- [ ] Languages beyond English: documented (`TESSERACT_LANGS`, `OCR_LANGUAGES`); add per-workspace choice if clients need mixed languages.
+- [ ] Image formats beyond PNG/JPEG (TIFF, HEIC from iPhones).
+- [ ] A scanned document and golden questions in the evaluation corpus.
 
 ### V2 features (larger; need your priority)
 
 - [ ] **Plan limits and billing**: pages, questions and seats per plan, enforced; payment provider.
       The pricing cards are display only until then.
 - [ ] **Website chat widget** (planned on the pricing cards).
-- [ ] **OCR for scanned PDFs** (planned on the pricing cards; today flagged "Needs OCR").
+- [x] **OCR for scanned PDFs and images**: done on branch `feature/ocr` (Tesseract; scanned PDFs, scanned pages, PNG/JPEG).
 - [ ] **Q&A export** (planned on the pricing cards).
 - [ ] **Public API and webhooks** (planned on the pricing cards).
 - [ ] Multi-workspace accounts (invite people who already have an account; workspace switcher).
@@ -97,7 +106,7 @@ the groups below; the original phase lists follow with each item's outcome.
 
 ### From Phase 2 (Documents)
 
-- [ ] OCR for scanned PDFs. → *V2.*
+- [x] OCR for scanned PDFs. → *Done (`feature/ocr`).*
 - [ ] CSV support. → *V2.*
 - [ ] Heading detection in PDFs. → *Pass 2.*
 - [ ] Require a confirmed email before uploading. → *Pass 2.*
@@ -145,7 +154,7 @@ the groups below; the original phase lists follow with each item's outcome.
 - [ ] License file. → *Needs you.*
 - [ ] Confirm final pricing. → *Needs you.*
 - [ ] Plan limits and billing. → *V2.*
-- [ ] Features shown as "planned" on the pricing cards. → *V2.*
+- [ ] Features shown as "planned" on the pricing cards (widget, Q&A export, API and webhooks; OCR is done). → *V2.*
 - [x] Source location repeats the document title. → *Pass 1.*
 - [x] SPF/DKIM/DMARC and a backup cron example. → *Pass 1.*
 - [x] Automated backups. → *Pass 1 (`infra/backup.sh` with pruning; off-site copy documented).*

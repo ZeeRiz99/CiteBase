@@ -91,7 +91,11 @@ class DocumentService:
             if size == 0:
                 raise UploadRejected("This file is empty.", code="empty_file")
             facts = await asyncio.to_thread(
-                inspect_file, temp, ext, max_pdf_pages=self.settings.max_pdf_pages
+                inspect_file,
+                temp,
+                ext,
+                max_pdf_pages=self.settings.max_pdf_pages,
+                max_image_megapixels=self.settings.max_image_megapixels,
             )
             key = self.storage.new_key(self.workspace_id)
             self.storage.commit_temp(temp, key)

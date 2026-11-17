@@ -175,7 +175,14 @@ function DocumentRow({ doc }: { doc: DocumentItem }) {
         </Link>
         {v.version_number > 1 ? <span className="text-xs text-muted-foreground">Version {v.version_number}</span> : null}
       </TableCell>
-      <TableCell className="hidden text-muted-foreground md:table-cell">{fileTypeLabel(v.file_ext)}</TableCell>
+      <TableCell className="hidden text-muted-foreground md:table-cell">
+        {fileTypeLabel(v.file_ext)}
+        {v.ocr_pages > 0 ? (
+          <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium" title="Text read with text recognition">
+            OCR
+          </span>
+        ) : null}
+      </TableCell>
       <TableCell className="hidden text-muted-foreground md:table-cell">{formatBytes(v.size_bytes)}</TableCell>
       <TableCell className="hidden text-muted-foreground lg:table-cell">{v.page_count ?? "—"}</TableCell>
       <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(v.created_at)}</TableCell>
@@ -184,13 +191,13 @@ function DocumentRow({ doc }: { doc: DocumentItem }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <button type="button" className="rounded-full" aria-label={`${v.status}: ${v.error_message}`}>
-                <StatusBadge status={v.status} />
+                <StatusBadge status={v.status} code={v.error_code} />
               </button>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">{v.error_message}</TooltipContent>
           </Tooltip>
         ) : (
-          <StatusBadge status={v.status} />
+          <StatusBadge status={v.status} code={v.error_code} />
         )}
       </TableCell>
       <TableCell>

@@ -32,7 +32,8 @@ Shipping Rates.pdf        PDF with a table (becomes a Markdown table)
 Employee Handbook.docx    Word document with headings, a bulleted list and a table
 Returns Policy.md         Markdown with sections, a code block and a table
 Support Guide.txt         Plain text
-Scanned Notice.pdf        Image-only PDF: should be flagged "needs OCR", not indexed
+Scanned Notice.pdf        Scanned 2-page notice (no text layer): read with text recognition (OCR)
+Delivery Note.jpg         Photo of a printed delivery note: read with text recognition (OCR)
 """
 
 
@@ -44,7 +45,8 @@ def main(target: Path) -> None:
         "Employee Handbook.docx": factory.docx_document(),
         "Returns Policy.md": factory.MARKDOWN.encode(),
         "Support Guide.txt": factory.TEXT.encode(),
-        "Scanned Notice.pdf": factory.scanned_pdf(),
+        "Scanned Notice.pdf": factory.scanned_text_pdf(),
+        "Delivery Note.jpg": factory.photo_jpeg(),
         "README.txt": README.encode(),
     }
     for name, data in files.items():

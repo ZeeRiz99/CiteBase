@@ -213,6 +213,7 @@ async def chunk_context(
             file_ext=found.version.file_ext,
             mime_type=found.version.mime_type,
             page_count=found.version.page_count,
+            ocr_pages=found.version.ocr_pages,
         ),
         previous=ChunkOut.build(found.previous) if found.previous else None,
         next=ChunkOut.build(found.following) if found.following else None,

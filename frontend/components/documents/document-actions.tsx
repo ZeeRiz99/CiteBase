@@ -90,7 +90,7 @@ export function DocumentActions({
   }
 
   const fileUrl = `/api/v1/documents/${document.id}/file`;
-  const accept = ".pdf,.docx,.md,.txt";
+  const accept = ".pdf,.docx,.md,.txt,.png,.jpg,.jpeg";
 
   return (
     <>

@@ -108,6 +108,7 @@ export type ChunkContext = {
     file_ext: string;
     mime_type: string;
     page_count: number | null;
+    ocr_pages: number;
   };
   previous: ChunkContext["chunk"] | null;
   next: ChunkContext["chunk"] | null;

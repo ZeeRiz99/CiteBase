@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import io
+import random
 import zipfile
 
 import docx
+import pypdfium2 as pdfium
+from PIL import Image, ImageChops, ImageFilter
 from reportlab.lib import pdfencrypt
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table
 
@@ -164,3 +168,103 @@ TEXT = (
     "Customers can reach support by email at any time. Phone support is open on weekdays.\n\n"
     "Warranty claims require the order number and a photo of the defect."
 )
+
+
+# ---- Scanned documents with known text (for text recognition) ---------------------------------
+
+WAREHOUSE_NOTICE = (
+    "DEMO DATA: fictional company, for testing only.\n\n"
+    "Northwind Outfitters - Warehouse Notice\n\n"
+    "From 1 March the returns desk at the Leeds warehouse is open Monday to Friday from 8:00 to "
+    "16:00. Parcels that arrive without a returns number are refused and sent back to the sender."
+    "\n\n"
+    "Forklift training takes place every second Tuesday. Only staff with a valid training card "
+    "may drive a forklift in aisles 4 to 9.",
+    "Fire drills are held on the first Monday of each quarter at 10:30. The assembly point is the "
+    "north car park, next to the bicycle shelter.\n\n"
+    "Questions about this notice go to the warehouse manager, Priya Kapoor, on extension 2214.",
+)
+
+DELIVERY_NOTE = (
+    "DEMO DATA: fictional delivery note.\n\n"
+    "Northwind Outfitters - Delivery Note 48213\n\n"
+    "Delivered to Harbour Street store on 14 May: 12 Alpine Down Jackets, 30 pairs of Trail Socks "
+    "and 6 Summit Tents. Two tents had damaged boxes and were returned with the driver. "
+    "Signed by the store supervisor, Tom Reyes."
+)
+
+
+def degrade(page: Image.Image, seed: int = 7) -> Image.Image:
+    """Make a clean page look scanned: slight tilt, sensor noise, blur and JPEG artefacts."""
+    rnd = random.Random(seed)  # noqa: S311 - reproducible test images, not security
+    img = page.convert("L").rotate(
+        rnd.uniform(-1.0, 1.0), resample=Image.Resampling.BICUBIC, fillcolor=255
+    )
+    noise = Image.effect_noise(img.size, 14)  # Gaussian around 128
+    img = ImageChops.add(img, noise, scale=1.0, offset=-128)
+    img = img.filter(ImageFilter.GaussianBlur(0.5))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=60)
+    return Image.open(io.BytesIO(buf.getvalue())).convert("L")
+
+
+def page_images(pages: list[str] | tuple[str, ...], dpi: int = 200) -> list[Image.Image]:
+    """Render text pages (laid out like pdf_with_text) to grayscale images."""
+    pdf = pdfium.PdfDocument(pdf_with_text(list(pages), header=None))
+    try:
+        return [pdf[i].render(scale=dpi / 72, grayscale=True).to_pil() for i in range(len(pdf))]
+    finally:
+        pdf.close()
+
+
+def _image_pdf(pages: list[Image.Image | str]) -> bytes:
+    """A PDF whose pages are images (scans) or, for strings, a real text layer."""
+    buf = io.BytesIO()
+    styles = getSampleStyleSheet()
+    c = canvas.Canvas(buf, pagesize=A4)
+    for page in pages:
+        if isinstance(page, str):
+            top = A4[1] - 2.5 * cm
+            for para in page.split("\n\n"):
+                p = Paragraph(para, styles["BodyText"])
+                _, height = p.wrap(A4[0] - 4 * cm, A4[1])
+                p.drawOn(c, 2 * cm, top - height)
+                top -= height + 0.4 * cm
+        else:
+            # Embedded as JPEG, like a real scanner's output (and a small file).
+            jpeg = io.BytesIO()
+            page.save(jpeg, format="JPEG", quality=70)
+            jpeg.seek(0)
+            c.drawImage(ImageReader(jpeg), 0, 0, width=A4[0], height=A4[1])
+        c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+def scanned_text_pdf(pages: tuple[str, ...] = WAREHOUSE_NOTICE, dpi: int = 200) -> bytes:
+    """Image-only PDF of known text, degraded like a real scan (no text layer)."""
+    return _image_pdf([degrade(img, seed=i) for i, img in enumerate(page_images(pages, dpi))])
+
+
+def partially_scanned_pdf() -> bytes:
+    """Page 1 has a text layer; page 2 is a scanned image."""
+    scan = degrade(page_images([WAREHOUSE_NOTICE[1]])[0])
+    return _image_pdf([LEAVE_POLICY, scan])
+
+
+def photo_jpeg(text: str = DELIVERY_NOTE) -> bytes:
+    """A phone-photo-like JPEG of a printed note."""
+    img = degrade(page_images([text])[0], seed=3)
+    width, height = img.size
+    img = img.crop((0, 0, width, height // 2))  # the note fills the top half of the page
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=70)
+    return buf.getvalue()
+
+
+def blank_scan_png() -> bytes:
+    """A scan with no readable text (only noise)."""
+    img = Image.effect_noise((1240, 1754), 30).convert("L")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()

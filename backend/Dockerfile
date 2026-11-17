@@ -14,9 +14,20 @@ RUN pip install --no-cache-dir uv==0.13.6 \
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
+# Text recognition (OCR) for scanned PDFs and images: Tesseract from Debian, installed in the dev
+# and prod images after the Python packages (so adding a language does not reinstall them). Add
+# languages with --build-arg TESSERACT_LANGS="eng deu fra" (Debian packages tesseract-ocr-<code>)
+# and set OCR_LANGUAGES to match (eng+deu+fra).
+
 FROM base AS dev
 RUN uv sync --frozen --no-install-project \
     && python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
+ARG TESSERACT_LANGS="eng"
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
+       $(for l in $TESSERACT_LANGS; do printf 'tesseract-ocr-%s ' "$l"; done) \
+    && rm -rf /var/lib/apt/lists/* \
+    && tesseract --version | head -1
 COPY . .
 USER app
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
@@ -34,6 +45,12 @@ CMD ["uvicorn", "app.embedder.main:app", "--host", "0.0.0.0", "--port", "8001"]
 FROM base AS prod
 RUN uv sync --frozen --no-dev --no-install-project \
     && python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
+ARG TESSERACT_LANGS="eng"
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr \
+       $(for l in $TESSERACT_LANGS; do printf 'tesseract-ocr-%s ' "$l"; done) \
+    && rm -rf /var/lib/apt/lists/* \
+    && tesseract --version | head -1
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app
