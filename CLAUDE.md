@@ -63,6 +63,9 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 - (Phase 4) Tests swap AI providers through `app.state.engine_factory` and `app.state.cheap_llm_factory` (see `tests/integration/test_chat.py`); stop/cancel behaviour is tested at the service level.
 - (Phase 4) `npm view` ignores `--before`: read `npm view <pkg> time --json` to pick versions published before the cutoff.
 - (Phase 4) The dev web container sets `NODE_ENV=development`, which breaks `next build` (`/_global-error` useContext error). Verify the build with `docker compose -f compose.yaml build web`.
+- (Phase 5) Production: `docker compose -f compose.yaml -f compose.prod.yaml ...` (or `COMPOSE_FILE=compose.yaml:compose.prod.yaml`); never plain `docker compose up` on a server. Test it locally with `SITE_ADDRESS=localhost` (Caddy's internal CA) and `E2E_IGNORE_HTTPS_ERRORS=1`.
+- (Phase 5) Clean-machine checks use a separate project name (`-p citebase-clean`) so the dev volumes are untouched; `down -v` there also deletes that project's `web_node_modules`.
+- (Phase 5) Demo data: `docker compose run --rm -v ./samples:/samples:ro api python -m app.cli seed [--password ...]`. Screenshots: `tests/e2e/screenshots.spec.ts` (README) and `tests/e2e/portfolio.spec.ts` (freelance portfolio, output in gitignored `portfolio/`); run them against a production build and look at every image.
 - (Phase 4) E2E: build `frontend/e2e.Dockerfile` (Chromium only; mcr.microsoft.com pulls time out here) and run `npx playwright test` in it with `--network host`, mounting the `citebase_web_node_modules` volume (README). Set `E2E_SCREENSHOTS=<dir>` to save review screenshots and look at them.
 
 ## Multi-tenancy and security (non-negotiable)
