@@ -1,70 +1,152 @@
 # End-of-build backlog
 
 Known limits and follow-ups collected at each phase gate. **Agreed with the user (2026-11-15): these
-are handled together after the last build phase, not during the phases.** Add new items at every gate;
-tick them off in the final hardening pass.
+are handled together after the last build phase, not during the phases.**
 
-## From Phase 1 (Foundation)
+The pass started after `v1.0.0` (2026-11-17). Every item from the phase lists is sorted into one of
+the groups below; the original phase lists follow with each item's outcome.
 
-- [ ] Push to GitHub and confirm the CI workflow is green (no remote yet).
-- [ ] Production Content-Security-Policy header for the app (downloads already use a sandbox CSP).
-- [ ] Mobile check at a true phone viewport. *Done in Phase 2: 0 px overflow at 390 px; keep in the Playwright suite.*
-- [ ] Faster dev hot reload: move the repo into the WSL filesystem, or accept polling on `D:\`.
-- [ ] Rate limiter is in-process: fine for one API instance; Redis-backed limiter with V2 workers.
-- [ ] Account features: change email, list and revoke active sessions, delete account.
-- [ ] npm 11 skips dependency install scripts (`unrs-resolver`); decide whether to approve them.
-- [ ] WSL idle shutdown is disabled on this laptop (`.wslconfig`); document for other machines.
+## Status of the backlog pass
 
-## From Phase 2 (Documents)
+### Pass 1: hardening (done, branch `hardening/pass-1`)
 
-- [ ] OCR for scanned PDFs (currently detected and flagged "Needs OCR", not converted).
-- [ ] CSV support (extraction by row groups) once quality is verified.
-- [ ] Heading detection in PDFs (font size/weight) so PDF passages also get section titles.
-- [ ] Require a confirmed email before uploading (decide before public sign-up).
-- [ ] Collections UI (API already supports `collection_id`); document-level permissions come with V2.
-- [ ] Delete chunks of superseded versions after a grace period to save space (kept for history now).
-- [ ] Parallel ingestion (worker runs one job at a time; Redis workers in V2).
-- [ ] Dev-only: in-memory rate limit trips during repeated manual testing (`docker compose restart api` resets it).
-- [ ] Revisit Next.js `instant = false` opt-out on signed-in pages if the shell becomes server-rendered.
+- [x] **Team invitations and roles** (found during the pass: the pricing cards promised team seats
+      but there was no way to add a teammate). Invite by email, accept page, member list, role
+      changes, removal, workspace rename. See ARCHITECTURE "Decisions made during the backlog pass".
+- [x] Viewer role made useful: viewers ask and rate; document controls hidden for roles that cannot
+      use them.
+- [x] Content-Security-Policy in production builds; the golden-path test fails on any violation.
+- [x] Ambiguous tables: prompt `answer-v2`, golden question t07, evaluation re-run.
+- [x] Phone-width chat checked in a Playwright test (tabs, answer, sources, passage, no sideways
+      scroll); fixed long conversation titles and the hover-only actions menu on touch screens.
+- [x] Chat no longer says "no documents" when the summary request fails.
+- [x] Source labels no longer repeat the document title.
+- [x] Trigram index for conversation search.
+- [x] Operator command for a workspace's AI allowance (`app.cli token-limit`), shown read-only in
+      Settings.
+- [x] `infra/backup.sh` with pruning, cron example, off-site copy, SPF/DKIM/DMARC guidance,
+      provider rate-limit note (DEPLOYMENT.md).
+- [x] `docs/THIRD_PARTY.md` from installed package metadata.
+- [x] README: Windows/WSL development notes (polling, idle shutdown, disk compaction), three e2e
+      tests.
 
-## From Phase 3 (RAG engine and evals)
+### Pass 2: product gaps (proposed next, needs your go-ahead)
 
-- [ ] Larger evaluation corpus (realistic size, hundreds of chunks): the 10-chunk demo corpus saturates retrieval metrics. Add per-client golden sets during onboarding.
-- [ ] Live-verify the OpenAI and Anthropic adapters once keys exist (contract-tested only).
-- [ ] Meter embedding tokens and cost (the Gemini embedding API returns no usage; currently excluded from cost reports).
-- [ ] Recalibrate gate thresholds on each client's corpus; the demo corpus gap between off-topic and answerable similarity is narrow (about 0.07).
-- [ ] Use a judge model from a different family than the answer model (self-preference bias); needs a second provider key.
-- [ ] Production rate limits: free-tier Gemini returned HTTP 429 several times per eval run (absorbed by retries); move to a paid tier or add request pacing.
-- [ ] Optional neighbor-chunk context expansion (in the design, not built); measure with the harness before adding.
-- [ ] Calibrate gate thresholds for profile 3 (OpenAI embeddings) when a key is available.
-- [ ] Ambiguous tables: asked for the *express* price, the model answered with a table's only (unlabelled) price column. Add a prompt rule ("if the source does not distinguish, say so") and a golden question for it, then re-run the evals.
-- [ ] Local profile gate: one holdout question fell just under the calibrated 0.80 threshold (false refusal); recalibrate with more questions.
-- [ ] Generation latency outliers: a live CLI answer (2026-11-16) took 11.5 s to generate versus a 1.4 s eval median, with no retries logged (likely free-tier variance). Add latency percentiles to usage events in Phase 4, then compare free vs paid tier and consider a timeout with fallback model.
-- [ ] Phase 2 fix applied early because it affected retrieval: PDF header/footer removal now works from two pages (was three).
+- [ ] Account features: change email (with confirmation), list and revoke active sessions, delete
+      account (GDPR-style request).
+- [ ] Require a confirmed email before uploading or inviting (decide: on by default in production?).
+- [ ] Meter embedding tokens and cost (estimated with the tokenizer, labeled "estimated"); decide
+      whether they count against the monthly AI allowance.
+- [ ] Generation timeout with a fallback model, after measuring latency percentiles.
+- [ ] Heading detection in PDFs (font size and weight) so PDF passages get section titles.
+- [ ] Deterministic CI stack for the e2e tests (fake providers), so they run on every push.
+- [ ] Settings: show this month's AI usage next to the allowance for admins.
 
-## From Phase 4 (Chat and source viewer)
+### V2 features (larger; need your priority)
 
-- [ ] Playwright in CI: the golden-path test runs against the dev stack with the real provider; add a deterministic CI stack (fake providers with test thresholds) so it can run on every push.
-- [ ] Settings UI for the monthly token limit (the limit works; it is changed in the database or via `MONTHLY_TOKEN_LIMIT` today).
-- [ ] Meter query-embedding tokens and cost in `usage_events` (only LLM calls are recorded).
-- [ ] PDF highlight precision: whole text items are highlighted, and the match rate is measured on synthetic fixtures only; measure it on real client PDFs and highlight character ranges.
-- [ ] "Ask about this document" from the document detail page (needs a per-turn document filter).
-- [ ] `/dashboard/activity` feed (recent uploads, questions, failures) from the original design.
-- [ ] Streaming resume: if the network drops mid-answer the client shows an error and the saved answer appears after reload; no reconnection.
-- [ ] Conversation title search uses ILIKE without an index; add a trigram index if lists grow large.
-- [ ] Localized refusal sentence per workspace (design 6.7); English only today.
-- [ ] Mobile check of the three-pane chat at a 390 px viewport (panes collapse into tabs; verify in the Playwright suite).
-- [ ] Dev-only npm advisories (12: 2 low, 10 moderate) in the shadcn CLI and typescript-eslint's transitive `minimatch`/`deepmerge`; runtime dependencies have none. Upgrade when fixed releases pass the dependency cutoff.
-- [ ] Registry pulls of `mcr.microsoft.com` time out from this network; the e2e test uses a slim Chromium-only image (`frontend/e2e.Dockerfile`) instead of the official Playwright image.
-- [ ] Create `docs/THIRD_PARTY.md` (promised in CLAUDE.md, never created). Phase 4 additions, licenses verified with `npm view`: react-markdown 10.1.0 (MIT), remark-gfm 4.0.1 (MIT), react-pdf 11.0.0 (MIT), pdfjs-dist 6.3.289 (Apache-2.0), @playwright/test 1.64.1 (Apache-2.0, dev only).
+- [ ] **Plan limits and billing**: pages, questions and seats per plan, enforced; payment provider.
+      The pricing cards are display only until then.
+- [ ] **Website chat widget** (planned on the pricing cards).
+- [ ] **OCR for scanned PDFs** (planned on the pricing cards; today flagged "Needs OCR").
+- [ ] **Q&A export** (planned on the pricing cards).
+- [ ] **Public API and webhooks** (planned on the pricing cards).
+- [ ] Multi-workspace accounts (invite people who already have an account; workspace switcher).
+- [ ] Collections UI and document-level permissions.
+- [ ] "Ask about this document" from the document page.
+- [ ] Activity feed on the dashboard.
+- [ ] Streaming resume after a network drop.
+- [ ] Localized refusal sentence per workspace.
+- [ ] CSV support.
+- [ ] Neighbor-chunk context expansion (measure with the harness first).
+- [ ] Parallel ingestion and a Redis-backed rate limiter (needed to run several API instances).
 
-## From Phase 5 (Polish and release)
+### Needs you (decisions or accounts only you can provide)
 
-- [ ] No license file: the owner decides the license (proprietary or open source) before publishing the repository.
-- [ ] Final pricing: the landing page shows four illustrative plans chosen by the owner (Free $0, Starter $29, Growth $79, Business $199; limits in pages, questions per month and seats). Confirm before selling.
-- [ ] Plan limits and billing: the page limits, question limits and seat counts on the pricing cards are display only. Today the only enforced limit is the monthly AI token allowance per workspace. Needs a plan field per workspace, enforcement of pages, questions and seats, and a payment provider.
-- [ ] Features shown as "planned" on the pricing cards: website chat widget, OCR for scanned PDFs, Q&A export, public API and webhooks.
-- [ ] Source location repeats the document title when a DOCX/MD top-level heading equals the title ("Employee Handbook" under "Employee Handbook"); cosmetic.
-- [ ] Deployment guide: add SPF/DKIM/DMARC guidance for email deliverability and a cron example for daily backups.
-- [ ] Automated off-site backups (the guide documents manual `pg_dump` + storage archive; a restore drill passed on a fresh install).
-- [ ] The WSL virtual disk does not shrink after Docker cleanups (environment note): compact it occasionally or keep enough free space on D:.
+- [ ] **Push to GitHub** (no remote yet) so the CI workflow runs.
+- [ ] **License**: proprietary or open source, before publishing the repository.
+- [ ] **Confirm the pricing** (Free $0, Starter $29, Growth $79, Business $199) before selling.
+- [ ] **OpenAI / Anthropic keys** to verify those adapters live and calibrate their gate thresholds
+      (also enables a judge model from a different family than the answer model).
+- [ ] **A paid Gemini tier** for client deployments (free tier returns HTTP 429 under load).
+- [ ] **Real client documents** (with permission) to measure PDF highlight precision and recalibrate
+      the relevance gate on a realistic corpus.
+
+### Decided: not doing, or done differently
+
+- Prune chunks of superseded versions: **kept** on purpose (old citations need them; see
+  ARCHITECTURE).
+- Move the repo into the WSL filesystem for faster reload: **not doing**; polling on `D:` works, the
+  README explains the occasional restart.
+- npm 11 skipped install scripts for `unrs-resolver`: **not needed**; it ships prebuilt binaries
+  and lint runs cleanly without the script.
+- Settings UI for admins to change the AI allowance: **replaced** by the operator command (customers
+  must not raise their own AI spend once plans are billed).
+
+## Original lists by phase (with outcome)
+
+### From Phase 1 (Foundation)
+
+- [ ] Push to GitHub and confirm the CI workflow is green. → *Needs you.*
+- [x] Production Content-Security-Policy header. → *Pass 1.*
+- [x] Mobile check at a true phone viewport. → *Phase 2 (pages) and pass 1 (chat), in Playwright.*
+- [x] Faster dev hot reload. → *Decided: keep polling; documented.*
+- [ ] Redis-backed rate limiter with several API instances. → *V2.*
+- [ ] Account features: change email, sessions, delete account. → *Pass 2.*
+- [x] npm 11 skips `unrs-resolver` install scripts. → *Decided: not needed.*
+- [x] WSL idle shutdown note for other machines. → *README.*
+
+### From Phase 2 (Documents)
+
+- [ ] OCR for scanned PDFs. → *V2.*
+- [ ] CSV support. → *V2.*
+- [ ] Heading detection in PDFs. → *Pass 2.*
+- [ ] Require a confirmed email before uploading. → *Pass 2.*
+- [ ] Collections UI and document-level permissions. → *V2.*
+- [x] Delete chunks of superseded versions. → *Decided: keep.*
+- [ ] Parallel ingestion. → *V2.*
+- [x] Dev-only in-memory rate limit during repeated testing. → *Documented (`docker compose restart api`).*
+- [ ] Revisit Next.js `instant = false` if the shell becomes server-rendered. → *Only if that happens.*
+
+### From Phase 3 (RAG engine and evals)
+
+- [ ] Larger evaluation corpus and per-client golden sets. → *Needs you (client documents).*
+- [ ] Live-verify the OpenAI and Anthropic adapters. → *Needs you (keys).*
+- [ ] Meter embedding tokens and cost. → *Pass 2.*
+- [ ] Recalibrate gate thresholds per client corpus. → *Needs you (client documents); the harness does it.*
+- [ ] Judge model from a different family. → *Needs you (second provider key).*
+- [ ] Production rate limits (free-tier 429). → *Needs you (paid tier); documented.*
+- [ ] Neighbor-chunk context expansion. → *V2.*
+- [ ] Calibrate gate thresholds for profile 3 (OpenAI embeddings). → *Needs you (key).*
+- [x] Ambiguous tables (express price from an unlabelled column). → *Pass 1: prompt `answer-v2`, t07.*
+- [ ] Local profile gate: one holdout false refusal at 0.80. → *Needs a larger question set.*
+- [ ] Generation latency outliers; timeout with fallback model. → *Pass 2.*
+- [x] PDF header/footer removal from two pages. → *Done in Phase 3.*
+
+### From Phase 4 (Chat and source viewer)
+
+- [ ] Playwright in CI with a deterministic stack. → *Pass 2.*
+- [x] Settings UI for the monthly token limit. → *Replaced by the operator command; shown in Settings.*
+- [ ] Meter query-embedding tokens. → *Pass 2.*
+- [ ] PDF highlight precision on real client PDFs. → *Needs you (client documents).*
+- [ ] "Ask about this document". → *V2.*
+- [ ] `/dashboard/activity` feed. → *V2.*
+- [ ] Streaming resume. → *V2.*
+- [x] Conversation title search index. → *Pass 1 (trigram index).*
+- [ ] Localized refusal sentence. → *V2.*
+- [x] Mobile check of the three-pane chat at 390 px. → *Pass 1 (`mobile-chat` test).*
+- [ ] Dev-only npm advisories: now 10 moderate (was 12) in the shadcn CLI and typescript-eslint's
+      transitive dependencies; the only fix is a forced major upgrade; runtime dependencies: 0.
+      → *Recheck at each upgrade.*
+- [x] `mcr.microsoft.com` pulls time out; slim e2e image. → *Environment note; workaround in place.*
+- [x] Create `docs/THIRD_PARTY.md`. → *Pass 1.*
+
+### From Phase 5 (Polish and release)
+
+- [ ] License file. → *Needs you.*
+- [ ] Confirm final pricing. → *Needs you.*
+- [ ] Plan limits and billing. → *V2.*
+- [ ] Features shown as "planned" on the pricing cards. → *V2.*
+- [x] Source location repeats the document title. → *Pass 1.*
+- [x] SPF/DKIM/DMARC and a backup cron example. → *Pass 1.*
+- [x] Automated backups. → *Pass 1 (`infra/backup.sh` with pruning; off-site copy documented).*
+- [x] WSL virtual disk does not shrink. → *README.*

@@ -177,6 +177,15 @@ questions:
     question: Above what order value is standard shipping free to the Netherlands?
     expected_quotes: ["all other countries above 80 EUR"]
     key_points: ["above 80 EUR"]
+  - id: t07
+    type: table
+    split: train
+    # Ambiguous table: the fee column does not say whether it is for standard or express.
+    question: How much does express gift card delivery to Belgium cost?
+    expected_quotes: ["Belgium | 3-5 | 2 | 3.50"]
+    key_points:
+      - "3.50 EUR is listed without saying whether it is for standard or express delivery"
+      - "express delivery to Belgium takes 2 days"
 
   # ---------------------------------------------------------------- unanswerable (off-topic)
   - id: u01

@@ -4,12 +4,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { branding } from "@/lib/branding";
 
-/* Numbers come only from the evaluation harness report (docs/evals/2026-11-15-baseline.md). */
+/* Numbers come only from the evaluation harness report (docs/evals/2026-11-17-baseline.md). */
 const QUALITY = [
   { value: "100%", label: "Citation precision", note: "cited passages that contain the expected fact" },
   { value: "100%", label: "Refusal accuracy", note: "answered when it should, refused when it should" },
   { value: "100%", label: "Prompt-injection resistance", note: "planted instructions in a document were ignored" },
-  { value: "1.4 s", label: "Median answer time", note: "full answer, Gemini Flash-Lite" },
+  { value: "2.0 s", label: "Median answer time", note: "full answer, Gemini Flash-Lite free tier" },
 ];
 
 export function QualitySection() {
@@ -34,7 +34,7 @@ export function QualitySection() {
           ))}
         </dl>
         <p className="mx-auto mt-6 max-w-3xl text-center text-sm text-slate-subtle">
-          Measured on a fictional 5-document demo corpus with 39 questions (answer quality judged by a model, so
+          Measured on a fictional 6-document demo corpus with 40 questions (answer quality judged by a model, so
           approximate). It is a small set: treat it as a smoke test. The same harness can be run on your own documents.
         </p>
       </div>
@@ -114,7 +114,7 @@ const PLANS: Plan[] = [
     audience: "Small businesses and internal teams",
     limits: [["Pages", "1,000"], ["Questions / month", "2,000"], ["Seats", "3"]],
     intro: "Everything in Free, plus",
-    features: ["Unanswered-questions log", "Answer ratings with comments", "Team roles: admin, member, viewer"],
+    features: ["Unanswered-questions log", "Answer ratings with comments", "Team invites with admin, member and viewer roles"],
     planned: ["Website chat widget"],
     cta: "Get started",
   },

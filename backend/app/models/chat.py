@@ -78,7 +78,15 @@ def _enum(cls: type[enum.StrEnum], name: str) -> Enum:
 
 class Conversation(UUIDPk, Timestamps, Base):
     __tablename__ = "conversations"
-    __table_args__ = (Index("ix_conversations_owner", "workspace_id", "user_id", "updated_at"),)
+    __table_args__ = (
+        Index("ix_conversations_owner", "workspace_id", "user_id", "updated_at"),
+        Index(
+            "ix_conversations_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
+    )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False

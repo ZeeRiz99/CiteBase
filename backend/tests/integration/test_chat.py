@@ -239,7 +239,7 @@ async def test_trace_shows_signals_thresholds_and_usage(api: Api, kb: dict[str, 
     answer = done_message(await ask_events(api, cid, LEAVE_Q))
     trace = (await api.get(f"/api/v1/messages/{answer['id']}/trace")).json()
     assert trace["question"] == LEAVE_Q
-    assert trace["llm_model"] == "fake-llm" and trace["prompt_version"] == "answer-v1"
+    assert trace["llm_model"] == "fake-llm" and trace["prompt_version"] == "answer-v2"
     assert trace["cost_usd"] is None  # no price configured for the fake model: never guessed
     assert trace["input_tokens"] > 0 and trace["latency_ms"] >= 0
     body = trace["trace"]

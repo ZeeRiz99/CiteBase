@@ -382,8 +382,22 @@ export function linkCitations(text: string, valid: ReadonlySet<number> | null): 
     .join("");
 }
 
-/** "Page 3 · Returns › Time limits", without repeating a section that is already the location. */
-export function sourceLocation(source: Pick<Source, "location" | "section_title">): string {
-  const { location, section_title: section } = source;
+const SEPARATOR = " › ";
+
+/**
+ * "Page 3 · Returns › Time limits", without repeating a section that is already the location, and
+ * without a leading heading that only repeats the document title ("Handbook › Leave" in "Handbook").
+ */
+export function sourceLocation(
+  source: Pick<Source, "location" | "section_title"> & Partial<Pick<Source, "document_title">>,
+): string {
+  const title = source.document_title?.trim().toLowerCase();
+  const stripTitle = (value: string) => {
+    if (!title) return value;
+    const parts = value.split(SEPARATOR);
+    return parts[0]?.trim().toLowerCase() === title ? parts.slice(1).join(SEPARATOR) : value;
+  };
+  const location = stripTitle(source.location); // "" when it only repeated the title
+  const section = source.section_title ? stripTitle(source.section_title) : "";
   return section && section !== location && !location.includes(section) ? `${location} · ${section}` : location;
 }

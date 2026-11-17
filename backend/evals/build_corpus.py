@@ -106,6 +106,18 @@ def build() -> list[Path]:
     path.write_bytes(buf.getvalue())
     written.append(path)
 
+    story = [
+        Paragraph("Gift cards", styles["Heading2"]),
+        Paragraph(c.DEMO, styles["BodyText"]),
+        Spacer(1, 0.3 * cm),
+        Paragraph(c.GIFT_CARD_NOTE, styles["BodyText"]),
+        Spacer(1, 0.2 * cm),
+        _table(c.GIFT_CARD_TABLE),
+    ]
+    path = OUT / "Larkspur Gift Cards.pdf"
+    _pdf(path, story, "Larkspur Outfitters - Gift Cards")
+    written.append(path)
+
     path = OUT / "Larkspur Supplier Notes.md"
     path.write_text(c.SUPPLIER_NOTES, encoding="utf-8")
     written.append(path)

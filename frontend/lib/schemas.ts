@@ -36,6 +36,22 @@ export const changePasswordSchema = z
   })
   .refine((v) => v.new_password === v.confirm, { path: ["confirm"], message: "Passwords do not match." });
 
+export const workspaceSchema = z.object({
+  name: z.string().trim().min(1, "Enter a workspace name.").max(120, "Use at most 120 characters."),
+});
+
+export const inviteSchema = z.object({
+  email: emailSchema,
+  role: z.enum(["admin", "member", "viewer"]),
+});
+
+export const acceptInviteSchema = z
+  .object({ full_name: nameSchema, password: passwordSchema, confirm: z.string() })
+  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "Passwords do not match." });
+
+export type WorkspaceValues = z.infer<typeof workspaceSchema>;
+export type InviteValues = z.infer<typeof inviteSchema>;
+export type AcceptInviteValues = z.infer<typeof acceptInviteSchema>;
 export type LoginValues = z.infer<typeof loginSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;

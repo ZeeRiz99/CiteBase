@@ -76,6 +76,19 @@ The first build takes a few minutes. Then:
 Open the site, create the first account (it becomes the owner of its workspace), confirm the email,
 and upload documents under **Knowledge base**.
 
+**Add your team** under **Settings → Team**: enter a colleague's email and a role. They get an email
+with a link (valid 7 days) to choose a password and join. The link is also shown once for copying,
+in case the email is slow. Roles:
+
+| Role | Can do |
+|---|---|
+| Owner | Everything, including managing admins (one per workspace: whoever signed up) |
+| Admin | Manage documents, the team (members and viewers), unanswered questions and answer traces |
+| Member | Upload and update documents, ask questions, rate answers |
+| Viewer | Ask questions and rate answers; cannot change documents |
+
+An email address that already has an account cannot be invited yet (one workspace per account).
+
 To save typing, put the two file names in the environment once:
 
 ```bash
@@ -118,33 +131,61 @@ docker compose -f compose.yaml -f compose.prod.yaml --profile local-embeddings u
 Set `DEFAULT_EMBEDDING_PROFILE=1` before creating workspaces. The model (about 120 MB) downloads on
 first start; the service needs about 1 GB of RAM.
 
-## 5. Backups
+**Provider rate limits.** Free AI tiers allow only a few requests per minute. CiteBase retries
+briefly when the provider says "too many requests", but answers slow down and indexing large
+document sets takes longer. Use a paid tier for client deployments and set a spending limit in the
+provider's console.
+
+## 5. Email delivery
+
+Invitations, email confirmation and password resets are sent through your SMTP provider. So that
+they land in the inbox and not in spam, set these DNS records for the domain in `EMAIL_FROM`
+(your provider shows the exact values):
+
+| Record | What it does |
+|---|---|
+| **SPF** (TXT on the domain, e.g. `v=spf1 include:<provider> ~all`) | Lists the servers allowed to send for the domain |
+| **DKIM** (TXT or CNAME the provider gives you) | Signs each email so receivers can verify it |
+| **DMARC** (TXT on `_dmarc.<domain>`, e.g. `v=DMARC1; p=none; rua=mailto:you@<domain>`) | Tells receivers what to do with mail that fails the checks; start with `p=none`, move to `quarantine` once reports look clean |
+
+Send a test by inviting yourself to a second address and check the message headers show
+`spf=pass`, `dkim=pass` and `dmarc=pass`.
+
+## 6. Backups
 
 Everything worth keeping lives in two Docker volumes: the database (`pgdata`) and the uploaded
-files (`storage`). Back up both, at the same time, at least daily, and copy the result off the server.
+files (`storage`). `infra/backup.sh` writes both at the same time and removes copies older than
+14 days:
 
 ```bash
-mkdir -p backups
-stamp=$(date +%F)
-docker compose exec -T postgres pg_dump -U postgres -Fc citebase > backups/db-$stamp.dump
-docker compose run --rm --no-deps -u root -v "$PWD/backups":/backup --entrypoint sh api \
-  -c "tar -czf /backup/storage-$stamp.tgz -C /data/storage ."
+infra/backup.sh                    # -> backups/db-<date>.dump and backups/storage-<date>.tgz
+infra/backup.sh /srv/backups 30    # another folder, keep 30 days
 ```
 
-(With `COMPOSE_FILE` exported as above.) Keep `.env` in your password manager: without
-`SECRET_KEY` and the database passwords a restore still works, but everyone must sign in again.
+Run it daily with cron (`crontab -e` as the user that runs Docker; adjust the path):
+
+```cron
+15 3 * * * cd /srv/citebase && infra/backup.sh >> backups/backup.log 2>&1
+```
+
+**Copy the backups off the server.** A backup on the same disk does not survive the disk. Use your
+host's object storage or a tool such as `rclone` or `restic` after the backup line, for example
+`rclone copy /srv/citebase/backups remote:citebase-backups`.
+
+Keep `.env` in your password manager: without `SECRET_KEY` and the database passwords a restore
+still works, but everyone must sign in again.
 
 **Restore** onto a fresh install (same `.env`):
 
 ```bash
 docker compose up -d --wait postgres     # --wait: until first-start setup has finished
-docker compose exec -T postgres pg_restore -U postgres -d citebase --clean --if-exists < backups/db-YYYY-MM-DD.dump
+docker compose exec -T postgres pg_restore -U postgres -d citebase --clean --if-exists < backups/db-<stamp>.dump
 docker compose run --rm --no-deps -u root -v "$PWD/backups":/backup --entrypoint sh api \
-  -c "tar -xzf /backup/storage-YYYY-MM-DD.tgz -C /data/storage"
+  -c "tar -xzf /backup/storage-<stamp>.tgz -C /data/storage"
 docker compose up -d
 ```
 
-## 6. Upgrades
+## 7. Upgrades
 
 ```bash
 git pull
@@ -153,7 +194,7 @@ docker compose up -d --build
 
 The `migrate` service applies database changes before the API starts. Take a backup first.
 
-## 7. Operations
+## 8. Operations
 
 | Task | Command |
 |---|---|
@@ -163,21 +204,29 @@ The `migrate` service applies database changes before the API starts. Take a bac
 | Stop everything | `docker compose down` (data is kept in volumes) |
 | Ask from the command line | `docker compose exec api python -m app.cli ask "..." --email you@example.com --trace` |
 | Re-index after a model change | `docker compose exec api python -m app.cli reindex --email you@example.com` |
+| Change one workspace's monthly AI allowance | `docker compose exec api python -m app.cli token-limit 5000000 --email admin@client.com` (`0` = unlimited, `default` = back to `MONTHLY_TOKEN_LIMIT`) |
+| Back up now | `infra/backup.sh` |
 
-## 8. Security checklist
+The AI allowance is an operator setting on purpose: workspace admins see it under **Settings** but
+cannot raise it themselves.
+
+## 9. Security checklist
 
 - [ ] Every secret in `.env` is a fresh random value; `.env` is `chmod 600` and not in git.
 - [ ] `ENVIRONMENT=production` (API docs are off; logs are JSON) and `COOKIE_SECURE=true`.
 - [ ] Only ports 80 and 443 are open in the firewall (Postgres is not published in production).
-- [ ] Real SMTP is configured; Mailpit is not running (`docker compose ps`).
-- [ ] Backups run daily and a restore has been tested once.
+- [ ] Real SMTP is configured with SPF, DKIM and DMARC; Mailpit is not running (`docker compose ps`).
+- [ ] `infra/backup.sh` runs daily from cron, copies go off the server, and a restore has been tested once.
 - [ ] The AI provider account has a spending limit; `MONTHLY_TOKEN_LIMIT` matches your budget.
 - [ ] The server gets operating-system security updates (for example `unattended-upgrades`).
 
-## 9. Known limits of this version
+## 10. Known limits of this version
 
 - One API instance per deployment: the request rate limiter lives in memory. Do not scale the
-  `api` service to several replicas yet.
+  `api` service to several replicas yet. Restarting the API also resets the limits.
 - No OCR: scanned PDFs are detected and flagged "Needs OCR", not indexed.
-- Teams, invitations and document permissions are planned for V2; every account owns its workspace.
+- One workspace per account: people who already have an account cannot be invited to another
+  workspace. Document-level permissions are not available; every member sees every document.
+- Plan limits shown on the pricing page (pages, questions, seats) are not enforced; only the monthly
+  AI allowance is.
 - See `docs/BACKLOG.md` for the full list.

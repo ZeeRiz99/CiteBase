@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { errorMessage } from "@/lib/api";
+import { hasRole, useMe } from "@/lib/auth";
 import {
   IN_PROGRESS,
   uploadDocument,
@@ -49,8 +50,12 @@ export function DocumentActions({
   const retry = useRetryDocument();
   const remove = useDeleteDocument();
   const invalidate = useInvalidateDocuments();
+  const { data: me } = useMe();
+  // UI hints only; the API enforces the same rules (upload/retry: member, delete: admin).
+  const canWrite = hasRole(me?.role, "member");
+  const canDelete = hasRole(me?.role, "admin");
   const busy = IN_PROGRESS.has(document.latest.status);
-  const canRetry = document.latest.status === "failed";
+  const canRetry = canWrite && document.latest.status === "failed";
 
   async function onNewVersion(file: File | undefined) {
     if (!file) return;
@@ -108,17 +113,21 @@ export function DocumentActions({
               <Download aria-hidden /> Download
             </a>
           </Button>
-          <Button variant="outline" onClick={() => fileInput.current?.click()} disabled={busy || uploading}>
-            <FileUp aria-hidden /> {uploading ? "Uploading…" : "Upload new version"}
-          </Button>
+          {canWrite ? (
+            <Button variant="outline" onClick={() => fileInput.current?.click()} disabled={busy || uploading}>
+              <FileUp aria-hidden /> {uploading ? "Uploading…" : "Upload new version"}
+            </Button>
+          ) : null}
           {canRetry ? (
             <Button variant="outline" onClick={onRetry} disabled={retry.isPending}>
               <RotateCw aria-hidden /> Retry
             </Button>
           ) : null}
-          <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-            <Trash2 aria-hidden /> Delete
-          </Button>
+          {canDelete ? (
+            <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
+              <Trash2 aria-hidden /> Delete
+            </Button>
+          ) : null}
         </div>
       ) : (
         <DropdownMenu>
@@ -133,18 +142,24 @@ export function DocumentActions({
                 <Download aria-hidden /> Download original
               </a>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => fileInput.current?.click()} disabled={busy || uploading}>
-              <FileUp aria-hidden /> Upload new version
-            </DropdownMenuItem>
+            {canWrite ? (
+              <DropdownMenuItem onSelect={() => fileInput.current?.click()} disabled={busy || uploading}>
+                <FileUp aria-hidden /> Upload new version
+              </DropdownMenuItem>
+            ) : null}
             {canRetry ? (
               <DropdownMenuItem onSelect={onRetry} disabled={retry.isPending}>
                 <RotateCw aria-hidden /> Retry processing
               </DropdownMenuItem>
             ) : null}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
-              <Trash2 aria-hidden /> Delete
-            </DropdownMenuItem>
+            {canDelete ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
+                  <Trash2 aria-hidden /> Delete
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

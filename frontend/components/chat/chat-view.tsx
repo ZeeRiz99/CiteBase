@@ -66,9 +66,11 @@ export function ChatView() {
   const queryClient = useQueryClient();
   const { data: me } = useMe();
   const isAdmin = hasRole(me?.role, "admin");
-  const canAsk = hasRole(me?.role, "member");
+  const canAsk = hasRole(me?.role, "viewer"); // every role may ask; uploads need member
   const summary = useDashboardSummary();
   const indexed = summary.data?.documents.indexed ?? 0;
+  // Only a successful answer of "zero" means no documents; a failed request must not block asking.
+  const noDocuments = summary.isSuccess && indexed === 0;
   const thread = useThread(activeId);
   const suggestions = useSuggestedQuestions(indexed > 0);
   const feedback = useFeedback(activeId);
@@ -225,7 +227,7 @@ export function ChatView() {
 
   const disabledReason = !canAsk
     ? "Viewers can read answers but not ask questions."
-    : indexed === 0
+    : noDocuments
       ? "Upload a document to start asking questions."
       : undefined;
   const notFound = isApiError(thread.error) && thread.error.status === 404;
@@ -294,7 +296,7 @@ export function ChatView() {
                 </p>
               ) : empty ? (
                 <EmptyState
-                  indexed={indexed}
+                  noDocuments={noDocuments}
                   loading={summary.isPending}
                   canAsk={canAsk}
                   suggestions={suggestions.data?.questions ?? []}
@@ -374,14 +376,14 @@ export function ChatView() {
 }
 
 function EmptyState({
-  indexed,
+  noDocuments,
   loading,
   canAsk,
   suggestions,
   suggestionsLoading,
   onPick,
 }: {
-  indexed: number;
+  noDocuments: boolean;
   loading: boolean;
   canAsk: boolean;
   suggestions: string[];
@@ -389,7 +391,7 @@ function EmptyState({
   onPick: (question: string) => void;
 }) {
   if (loading) return <Skeleton className="h-40 rounded-2xl" />;
-  if (indexed === 0) {
+  if (noDocuments) {
     return (
       <div className="grid justify-items-center gap-3 py-16 text-center">
         <span className="grid size-12 place-items-center rounded-full bg-teal-50">

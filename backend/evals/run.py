@@ -499,7 +499,7 @@ def write_report(
         "",
         f"Run {started:%Y-%m-%d %H:%M} UTC. {cfg.description}".strip(),
         "",
-        "Corpus: 5 fictional Larkspur Outfitters documents (DEMO DATA), "
+        f"Corpus: {ingest['documents']} fictional Larkspur Outfitters documents (DEMO DATA), "
         f"{ingest['chunks']} chunks. Golden set: {s['questions']} questions. "
         "All numbers below were produced by `evals/run.py`; faithfulness and key points are LLM-judged "
         f"(approximate; spot-check `{stem}-judgments.csv`).",

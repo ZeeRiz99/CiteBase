@@ -42,6 +42,7 @@ TABLES = (
     "collections",
     "memberships",
     "workspaces",
+    "invitations",
     "auth_tokens",
     "auth_sessions",
     "users",

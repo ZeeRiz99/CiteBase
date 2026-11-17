@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Phase 5 (polish and release): complete on branch `phase-5/release`, awaiting approval.** Phases 1-4 are closed (tags `phase-1` to `phase-4`). On approval: merge, tag `v1.0.0`, then the end-of-build backlog pass (`docs/BACKLOG.md`).
+**Backlog pass 1 (hardening): complete on branch `hardening/pass-1`, awaiting approval.** All build phases are closed and released as `v1.0.0` (2026-11-17). Pass 2 and the V2 features wait for the owner's priority (`docs/BACKLOG.md`).
 
 ## Completed
 
@@ -14,6 +14,22 @@
 | 2026-11-15 | 3 | Embedding profiles and per-profile vectors; provider layer (Gemini live, OpenAI/Anthropic contract-tested); local embedder; hybrid retrieval; calibrated relevance gate; versioned prompts; citation validation and regenerate-once; follow-up rewriting; CLI; evaluation harness with reports |
 | 2026-11-16 | 4 | Migration 0004 (conversations, messages, message_sources, feedback, unanswered_questions, usage_events; RLS); SSE chat endpoint on the RAG engine with stop/cancel handling; regenerate; feedback; admin trace; unanswered queue; usage events and monthly token limit; per-user chat rate limit; suggested questions from real passages; passage context endpoint; purge blanks stored snippets; three-pane chat UI (conversation list, streaming answers with citation chips and hover previews, evidence badge, stop, regenerate, copy, rating with comment, sources panel, mobile tabs); source viewer (PDF page with text-layer highlight, text formats highlighted by stored offsets, version notice); admin "why this answer?" sheet; unanswered page; dashboard question stats and usage meter; Playwright golden-path test |
 | 2026-11-17 | 5 | Landing page (measured quality with caveat, integrations with planned items labeled, illustrative pricing in four tiers chosen by the owner (Free, Starter $29, Growth $79, Business $199; only built features listed as included, others labeled planned), FAQ, footer); icons and share image generated from branding; labeled demo seed (`app.cli seed`); production overlay with automatic HTTPS (`compose.prod.yaml`); configuration passthrough for SMTP/models/limits; deployment guide with backup and restore; asset brief; README rewrite with screenshots and diagrams; reproducible README screenshots and freelance portfolio images; clean-machine run; fixes found on the way (Postgres first-start readiness race, citation preview covering the passage, evidence badge on refusals) |
+
+## Backlog pass 1 (after v1.0.0)
+
+| Date | What |
+|---|---|
+| 2026-11-17 | Team invitations and roles (migration 0005), viewer as ask-only seat, role-aware document controls, workspace rename, operator AI-allowance command, production Content-Security-Policy, prompt `answer-v2` for ambiguous tables (golden question t07), phone fixes in the conversation list, chat empty-state fix, source labels, trigram search index, `infra/backup.sh`, email deliverability and backup guidance, `docs/THIRD_PARTY.md`, Windows development notes |
+
+Evidence:
+
+- Backend: ruff, mypy, `alembic check` clean; pytest all pass (8 new team tests: invite, email, preview, accept, viewer rights including asking, role hierarchy, removal ends sessions, revoked/expired/replaced links, workspace isolation, RLS on invitations, workspace settings).
+- Frontend: lint and types clean; 42 Vitest tests pass (new: role rules, source labels).
+- **End to end on the production build** (CSP on): `golden-path` (fails on any CSP violation), `team` (invite, join through the link, role change) and `mobile-chat` (390 px) all pass. The invitation email reached Mailpit.
+- **Evaluation** (`docs/evals/2026-11-17-baseline.md`, 6 documents, 40 questions): every quality metric 100%; t07 answered "The table lists one fee for Belgium, 3.50 EUR, but does not say whether it applies to standard or express delivery". Median latency 2.0 s (free tier with several rate-limit waits; 1.4 s before).
+- Live check on the demo workspace: "How much does express shipping to Spain cost?" changed from a wrong "7.90 EUR" to the honest answer.
+- Backup script: dump with all 23 tables and an archive with all 90 stored files.
+- `npm audit --omit=dev`: 0. Dev-only: 10 moderate (was 12).
 
 ## Phase 5 verification evidence
 
@@ -41,8 +57,8 @@
 
 ## Known issues
 
-All known limits are collected per phase in [`docs/BACKLOG.md`](BACKLOG.md) and are handled after the last build phase, as agreed.
+All known limits are in [`docs/BACKLOG.md`](BACKLOG.md), sorted into pass 2, V2 features, items that need the owner, and decided items.
 
 ## Next step
 
-**On approval:** merge `phase-5/release`, tag `v1.0.0`. Then the end-of-build backlog pass: work through `docs/BACKLOG.md` (Phases 1-5), as agreed.
+**On approval:** merge `hardening/pass-1` and tag `v1.1.0`. Then pass 2 (account features, verified email before upload, embedding metering, latency fallback, PDF headings, CI e2e) or a V2 feature, in the order the owner chooses.
