@@ -31,6 +31,15 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
+// Remove the demo account's earlier conversations so screens look like first use.
+async function clearConversations(page: Page) {
+  const csrf = (await (await page.request.get("/api/v1/auth/csrf")).json()) as { csrf_token: string };
+  const conversations = (await (await page.request.get("/api/v1/conversations")).json()) as { id: string }[];
+  for (const c of conversations) {
+    await page.request.delete(`/api/v1/conversations/${c.id}`, { headers: { "X-CSRF-Token": csrf.csrf_token } });
+  }
+}
+
 async function closeSheet(page: Page) {
   await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
@@ -52,6 +61,7 @@ test.describe("desktop", () => {
     await snap(page, "02-landing-full-page", true);
 
     await signIn(page);
+    await clearConversations(page);
     await page.goto("/knowledge-base");
     await expect(page.getByText(/Reading|Indexing|Embedding|Queued/)).toHaveCount(0, { timeout: 90_000 });
     await snap(page, "04-knowledge-base");
@@ -102,6 +112,7 @@ test.describe("phone", () => {
     await page.goto("/");
     await snap(page, "11-phone-landing");
     await signIn(page);
+    await clearConversations(page);
     await page.goto("/chat");
     await ask(page, "How long do I have to return an item?");
     await expect(page.locator("article").last().getByRole("button", { name: /^Source \d+:/ }).first()).toBeVisible({

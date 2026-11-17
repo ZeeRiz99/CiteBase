@@ -16,6 +16,15 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: path.join(OUT!, `${name}.png`) });
 }
 
+// Remove the demo account's earlier conversations so screens look like first use.
+async function clearConversations(page: Page) {
+  const csrf = (await (await page.request.get("/api/v1/auth/csrf")).json()) as { csrf_token: string };
+  const conversations = (await (await page.request.get("/api/v1/conversations")).json()) as { id: string }[];
+  for (const c of conversations) {
+    await page.request.delete(`/api/v1/conversations/${c.id}`, { headers: { "X-CSRF-Token": csrf.csrf_token } });
+  }
+}
+
 async function closeSheet(page: Page) {
   await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
@@ -30,6 +39,7 @@ test("capture README screenshots", async ({ page }) => {
   await page.getByLabel("Password").fill(PASSWORD!);
   await page.getByRole("button", { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/dashboard/);
+  await clearConversations(page);
 
   await page.goto("/knowledge-base");
   await expect(page.getByText("Ready", { exact: true }).first()).toBeVisible({ timeout: 90_000 });
