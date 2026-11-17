@@ -123,6 +123,9 @@ const SHOWCASE = [
   { file: "03-dashboard", name: "06-dashboard", title: "Usage and quality at a glance", sub: "Questions asked, unanswered gaps, helpful rate and AI usage per workspace." },
 ];
 
+// The real logo mark (same file the browser uses as its icon).
+const LOGO = `data:image/svg+xml;base64,${readFileSync(path.join(process.cwd(), "app/icon.svg")).toString("base64")}`;
+
 const STACK = ["Next.js 16", "FastAPI", "Postgres + pgvector", "Hybrid RAG", "SSE streaming", "Row-level security"];
 
 function frameHtml(title: string, sub: string, image: string, w: number, h: number) {
@@ -136,7 +139,7 @@ body{width:${w}px;height:${h}px;overflow:hidden;font-family:Inter,system-ui,sans
  display:flex;flex-direction:column;padding:${wide ? 40 : 44}px ${wide ? 56 : 48}px 0}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;color:#e4ebf5}
-.brand i{width:28px;height:28px;border-radius:7px;background:#14b8a6;display:inline-block}
+.brand img{width:30px;height:30px;display:block}
 h1{font-size:${wide ? 40 : 42}px;line-height:1.12;font-weight:700;letter-spacing:-.02em;margin-top:${wide ? 14 : 22}px;max-width:${wide ? 900 : 860}px}
 p{font-size:${wide ? 19 : 20}px;color:#c9d4e5;margin-top:10px;max-width:820px;line-height:1.45}
 .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:${wide ? 420 : 330}px}
@@ -146,7 +149,7 @@ p{font-size:${wide ? 19 : 20}px;color:#c9d4e5;margin-top:10px;max-width:820px;li
 .bar b{width:11px;height:11px;border-radius:50%;background:#d5dde8}
 .win img{display:block;width:100%}
 </style></head><body>
-<div class="top"><div><div class="brand"><i></i>CiteBase</div><h1>${title}</h1><p>${sub}</p></div>
+<div class="top"><div><div class="brand"><img src="${LOGO}" alt="">CiteBase</div><h1>${title}</h1><p>${sub}</p></div>
 <div class="chips">${STACK.map((s) => `<span>${s}</span>`).join("")}</div></div>
 <div class="win"><div class="bar"><b></b><b></b><b></b></div><img src="${image}"></div>
 </body></html>`;

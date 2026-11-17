@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText } from "lucide-react";
+import { useState } from "react";
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { sourceLocation, type Source } from "@/lib/chat";
@@ -16,16 +17,21 @@ export function CitationChip({
   source: Source | undefined;
   onOpen: (source: Source) => void;
 }) {
+  const [preview, setPreview] = useState(false);
   const available = source?.available ?? false;
   const label = source ? `Source ${number}: ${source.document_title}, ${source.location}` : `Source ${number}`;
   return (
-    <HoverCard openDelay={150} closeDelay={100}>
+    <HoverCard open={preview} onOpenChange={setPreview} openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>
         <button
           type="button"
           aria-label={label}
           disabled={!source}
-          onClick={() => source && available && onOpen(source)}
+          onClick={() => {
+            // The passage opens in a sheet; the preview must not stay on top of it.
+            setPreview(false);
+            if (source && available) onOpen(source);
+          }}
           className={cn(
             "mx-0.5 inline-flex h-5 min-w-5 -translate-y-px items-center justify-center rounded-full px-1.5 align-baseline text-[11px] leading-none font-semibold transition-colors",
             available
