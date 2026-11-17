@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 
 import { Logo } from "@/components/brand/logo";
+import { FaqSection, IntegrationsSection, PricingSection, QualitySection } from "@/components/marketing/sections";
 import { Button } from "@/components/ui/button";
 import { branding } from "@/lib/branding";
 
@@ -72,7 +73,10 @@ export default function LandingPage() {
           <nav aria-label="Sections" className="hidden items-center gap-6 text-sm font-medium text-slate-subtle md:flex">
             <a href="#how" className="hover:text-navy-900">How it works</a>
             <a href="#use-cases" className="hover:text-navy-900">Use cases</a>
+            <a href="#quality" className="hover:text-navy-900">Quality</a>
             <a href="#security" className="hover:text-navy-900">Security</a>
+            <a href="#pricing" className="hover:text-navy-900">Pricing</a>
+            <a href="#faq" className="hover:text-navy-900">FAQ</a>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <Button asChild variant="ghost" size="lg">
@@ -165,6 +169,10 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <QualitySection />
+
+        <IntegrationsSection />
+
         <section id="security" className="scroll-mt-20 bg-navy-900 text-white">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2">
             <div className="grid content-start gap-4">
@@ -186,6 +194,10 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <PricingSection />
+
+        <FaqSection />
+
         <section className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
           <h2 className="text-3xl font-semibold text-navy-900">Put your documents to work</h2>
           <p className="mx-auto mt-3 max-w-xl text-slate-body">Create a workspace in under a minute.</p>
@@ -198,9 +210,20 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-8 text-sm text-slate-subtle sm:px-6">
-          <Logo />
-          <p className="ml-auto">{branding.tagline}</p>
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm text-slate-subtle sm:px-6 md:grid-cols-[1fr_auto]">
+          <div className="grid gap-2">
+            <Logo />
+            <p>{branding.tagline}</p>
+            <p className="text-xs">Example content on this page is fictional. Pricing is illustrative.</p>
+          </div>
+          <nav aria-label="Footer" className="flex flex-wrap content-start gap-x-6 gap-y-2">
+            <a href="#how" className="hover:text-navy-900">How it works</a>
+            <a href="#quality" className="hover:text-navy-900">Quality</a>
+            <a href="#security" className="hover:text-navy-900">Security</a>
+            <a href="#pricing" className="hover:text-navy-900">Pricing</a>
+            <Link href="/login" className="hover:text-navy-900">Sign in</Link>
+            <Link href="/register" className="hover:text-navy-900">Create a workspace</Link>
+          </nav>
         </div>
       </footer>
     </div>

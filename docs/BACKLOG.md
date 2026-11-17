@@ -57,3 +57,14 @@ tick them off in the final hardening pass.
 - [ ] Dev-only npm advisories (12: 2 low, 10 moderate) in the shadcn CLI and typescript-eslint's transitive `minimatch`/`deepmerge`; runtime dependencies have none. Upgrade when fixed releases pass the dependency cutoff.
 - [ ] Registry pulls of `mcr.microsoft.com` time out from this network; the e2e test uses a slim Chromium-only image (`frontend/e2e.Dockerfile`) instead of the official Playwright image.
 - [ ] Create `docs/THIRD_PARTY.md` (promised in CLAUDE.md, never created). Phase 4 additions, licenses verified with `npm view`: react-markdown 10.1.0 (MIT), remark-gfm 4.0.1 (MIT), react-pdf 11.0.0 (MIT), pdfjs-dist 6.3.289 (Apache-2.0), @playwright/test 1.64.1 (Apache-2.0, dev only).
+
+## From Phase 5 (Polish and release)
+
+- [ ] No license file: the owner decides the license (proprietary or open source) before publishing the repository.
+- [ ] Final pricing: the landing page shows four illustrative plans chosen by the owner (Free $0, Starter $29, Growth $79, Business $199; limits in pages, questions per month and seats). Confirm before selling.
+- [ ] Plan limits and billing: the page limits, question limits and seat counts on the pricing cards are display only. Today the only enforced limit is the monthly AI token allowance per workspace. Needs a plan field per workspace, enforcement of pages, questions and seats, and a payment provider.
+- [ ] Features shown as "planned" on the pricing cards: website chat widget, OCR for scanned PDFs, Q&A export, public API and webhooks.
+- [ ] Source location repeats the document title when a DOCX/MD top-level heading equals the title ("Employee Handbook" under "Employee Handbook"); cosmetic.
+- [ ] Deployment guide: add SPF/DKIM/DMARC guidance for email deliverability and a cron example for daily backups.
+- [ ] Automated off-site backups (the guide documents manual `pg_dump` + storage archive; a restore drill passed on a fresh install).
+- [ ] The WSL virtual disk does not shrink after Docker cleanups (environment note): compact it occasionally or keep enough free space on D:.

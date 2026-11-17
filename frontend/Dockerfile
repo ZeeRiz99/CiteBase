@@ -16,8 +16,10 @@ FROM base AS build
 # Branding is inlined at build time (one image per client deployment).
 ARG NEXT_PUBLIC_PRODUCT_NAME=CiteBase
 ARG NEXT_PUBLIC_PRODUCT_TAGLINE="Ask your documents. Get answers you can verify."
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:8080
 ENV NEXT_PUBLIC_PRODUCT_NAME=$NEXT_PUBLIC_PRODUCT_NAME \
-    NEXT_PUBLIC_PRODUCT_TAGLINE=$NEXT_PUBLIC_PRODUCT_TAGLINE
+    NEXT_PUBLIC_PRODUCT_TAGLINE=$NEXT_PUBLIC_PRODUCT_TAGLINE \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

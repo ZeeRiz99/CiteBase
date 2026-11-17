@@ -2,6 +2,7 @@
 
     python -m app.cli ask "How many days of leave do new hires get?" --email you@example.com --trace
     python -m app.cli reindex --email you@example.com
+    python -m app.cli seed --samples /samples        # labeled demo account (DEMO DATA)
 
 The workspace is resolved from the user's membership (row-level security stays in force: the CLI
 acts as that user, exactly like the API).
@@ -14,6 +15,7 @@ import asyncio
 import json
 import sys
 import textwrap
+from pathlib import Path
 
 import httpx
 from sqlalchemy import select
@@ -22,9 +24,11 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import create_engine, create_sessionmaker, set_tenant
 from app.models import Document, DocumentStatus, DocumentVersion, User, Workspace
+from app.providers.storage import build_storage
 from app.rag.factory import build_engine
 from app.repositories import system as system_repo
 from app.repositories import workspaces as ws_repo
+from app.services.demo import DEMO_EMAIL, sample_files, seed_demo
 
 
 async def _workspace_for(db, email: str) -> Workspace:  # type: ignore[no-untyped-def]
@@ -91,9 +95,46 @@ async def reindex(email: str) -> None:
     print(f"Queued {len(versions)} document(s) for re-indexing in {workspace.name}.")
 
 
+def demo_files(samples: Path) -> list[Path]:
+    if not samples.is_dir():
+        sys.exit(f"Sample folder not found: {samples} (mount ./samples, see README)")
+    files = sample_files(samples)
+    if not files:
+        sys.exit(f"No sample documents in {samples}")
+    return files
+
+
+async def seed(files: list[Path], email: str, password: str | None) -> None:
+    """Create the labeled demo account and upload the fictional sample documents."""
+    settings = get_settings()
+    engine = create_engine(settings, null_pool=True)
+    maker = create_sessionmaker(engine)
+    async with maker() as db:
+        result = await seed_demo(
+            db, settings, build_storage(settings), files, email=email, password=password
+        )
+    await engine.dispose()
+
+    if not result.created:
+        print(f"The demo account {result.email} already exists; nothing changed.")
+        return
+    print(f"Demo workspace created (DEMO DATA, fictional): {result.email}")
+    if result.password:
+        print(f"Password (shown once): {result.password}")
+    for name in result.uploaded:
+        print(f"  queued   {name}")
+    for name, reason in result.rejected.items():
+        print(f"  rejected {name}: {reason}")
+    print("The worker indexes the documents within a minute.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="citebase")
     sub = parser.add_subparsers(dest="command", required=True)
+    p_seed = sub.add_parser("seed", help="create the demo account with the fictional samples")
+    p_seed.add_argument("--samples", type=Path, default=Path("/samples"))
+    p_seed.add_argument("--email", default=DEMO_EMAIL)
+    p_seed.add_argument("--password", default=None, help="default: a generated one, shown once")
     p_ask = sub.add_parser("ask", help="answer a question from a workspace's documents")
     p_ask.add_argument("question")
     p_ask.add_argument("--email", required=True, help="a member of the workspace")
@@ -106,6 +147,8 @@ def main() -> None:
     configure_logging("WARNING", json_output=settings.environment != "development")
     if args.command == "ask":
         asyncio.run(ask(args.question, args.email, args.trace))
+    elif args.command == "seed":
+        asyncio.run(seed(demo_files(args.samples), args.email, args.password))
     else:
         asyncio.run(reindex(args.email))
 

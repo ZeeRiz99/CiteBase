@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { sourceLocation, type Source } from "@/lib/chat";
@@ -16,16 +17,29 @@ export function CitationChip({
   source: Source | undefined;
   onOpen: (source: Source) => void;
 }) {
+  const [preview, setPreview] = useState(false);
+  // After a click the passage opens in a sheet. The hover delay started when the pointer
+  // arrived would reopen the preview on top of it, so ignore open requests for a moment.
+  const quietUntil = useRef(0);
   const available = source?.available ?? false;
   const label = source ? `Source ${number}: ${source.document_title}, ${source.location}` : `Source ${number}`;
   return (
-    <HoverCard openDelay={150} closeDelay={100}>
+    <HoverCard
+      open={preview}
+      onOpenChange={(open) => setPreview(open && Date.now() >= quietUntil.current)}
+      openDelay={150}
+      closeDelay={100}
+    >
       <HoverCardTrigger asChild>
         <button
           type="button"
           aria-label={label}
           disabled={!source}
-          onClick={() => source && available && onOpen(source)}
+          onClick={() => {
+            quietUntil.current = Date.now() + 1000;
+            setPreview(false);
+            if (source && available) onOpen(source);
+          }}
           className={cn(
             "mx-0.5 inline-flex h-5 min-w-5 -translate-y-px items-center justify-center rounded-full px-1.5 align-baseline text-[11px] leading-none font-semibold transition-colors",
             available

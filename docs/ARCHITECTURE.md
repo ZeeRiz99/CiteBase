@@ -665,6 +665,21 @@ docker run --rm hello-world && docker compose version
 | Dashboard | Question counts (7 d / 30 d), open unanswered, helpful rate and an admin usage meter come from `/dashboard/summary` and `/workspace/usage`; the planned `/dashboard/activity` feed is deferred | Real numbers only; the feed adds little for one-user workspaces |
 | E2E | One Playwright golden-path test (`frontend/tests/e2e`) in a slim Chromium-only image (`frontend/e2e.Dockerfile`, Playwright 1.64.1) against the running stack, with the real provider | No browser install on the laptop; the official 2 GB image would not download here; tests what users get |
 
+### Decisions made during Phase 5
+
+| Topic | Decision | Why |
+|---|---|---|
+| Demo data | `python -m app.cli seed` creates one verified demo account (`demo@example.com`, password generated and shown once, or `--password`) and uploads the fictional `samples/` (mounted read-only) through the normal upload path; a second run does nothing | The only path for demo data (CLAUDE.md); exercises the real validation, ingestion and audit |
+| Account creation | `AuthService._create_account` is shared by sign-up and the seed | One definition of "an account": user, workspace, owner membership, default collection |
+| Production overlay | `compose.prod.yaml` on top of `compose.yaml`: `SITE_ADDRESS` (required) gives Caddy a domain and automatic HTTPS, certificates in a volume, ports 80/443 (+UDP for HTTP/3), Postgres not published (`!reset`), Mailpit behind a profile, `ENVIRONMENT=production` | One explicit command for servers; the development overlay can never load by accident when `-f` is used |
+| Postgres readiness | Healthcheck `pg_isready -h 127.0.0.1` (TCP), restore uses `up -d --wait postgres` | The image's first-start setup serves the socket from a temporary server that then restarts; found by the restore drill |
+| Configuration passthrough | Compose now passes SMTP credentials and STARTTLS, model names, default embedding profile, monthly token limit and retention; blank SMTP credentials mean "no login" | A client deployment could not configure real email before |
+| Branding assets | `app/icon.svg`, generated `apple-icon` and `opengraph-image` from the product name and tagline; `metadataBase` from `APP_BASE_URL` (build argument) | Per-deployment branding without hand-made images |
+| Landing page | Code-drawn hero illustration (not a screenshot), measured-quality numbers only from the eval report with their caveat, integrations limited to what exists (planned items labeled), pricing labeled illustrative, FAQ | Honest positioning; white-label safe |
+| Screenshots | README screenshots (`tests/e2e/screenshots.spec.ts`) and portfolio images (`tests/e2e/portfolio.spec.ts`: retina desktop and phone, framed 2000x1500 for Upwork and 2560x1538 for Fiverr) are generated from the demo workspace on a production build; portfolio output is gitignored | Reproducible after any visual change; no hand-edited images |
+| Next.js 16.4.6 | Upgraded from 16.4.3 past the dependency cutoff for GHSA-mfr8-8qww-v76h (moderate: information disclosure when a `'use cache'` function is called through `unstable_cache()`, affects 16.3.0-16.4.4). CiteBase uses neither API, so it was not exploitable here | Security fixes are allowed per package (Phase 1 rule); no known advisory in runtime dependencies at release |
+| Clean-machine run | Fresh clone in the WSL home, `.env.example` plus one provider key, README quick start, then the production overlay with HTTPS on `localhost`, golden path, backup and restore drill | Verifies the documents a client will follow, not the developer's machine |
+
 ## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*

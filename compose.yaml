@@ -14,11 +14,20 @@ x-backend-env: &backend-env
   EMAIL_BACKEND: ${EMAIL_BACKEND:-smtp}
   SMTP_HOST: ${SMTP_HOST:-mailpit}
   SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
   EMAIL_FROM: ${EMAIL_FROM:-CiteBase <no-reply@citebase.local>}
   STORAGE_DIR: /data/storage
+  RETENTION_DAYS: ${RETENTION_DAYS:-30}
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+  LLM_MODEL: ${LLM_MODEL:-gemini-3.5-flash-lite}
+  LLM_CHEAP_MODEL: ${LLM_CHEAP_MODEL:-gemini-3.5-flash-lite}
+  DEFAULT_EMBEDDING_PROFILE: ${DEFAULT_EMBEDDING_PROFILE:-2}
+  MONTHLY_TOKEN_LIMIT: ${MONTHLY_TOKEN_LIMIT:-2000000}
 
 # Uploaded originals, shared by the API (writes, serves) and the worker (reads, purges).
 x-storage-volume: &storage-volume
@@ -39,7 +48,9 @@ services:
     ports:
       - "127.0.0.1:5433:5432"   # 5432 is taken by the native WSL Postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d citebase"]
+      # Over TCP: during first-start setup Postgres runs a temporary server on the socket only,
+      # which would otherwise report "ready" just before it restarts.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d citebase"]
       interval: 3s
       timeout: 3s
       retries: 30
@@ -92,6 +103,7 @@ services:
       args:
         NEXT_PUBLIC_PRODUCT_NAME: ${PRODUCT_NAME:-CiteBase}
         NEXT_PUBLIC_PRODUCT_TAGLINE: ${PRODUCT_TAGLINE:-Ask your documents. Get answers you can verify.}
+        NEXT_PUBLIC_SITE_URL: ${APP_BASE_URL:-http://localhost:8080}
     depends_on:
       api: { condition: service_healthy }
     mem_limit: 512m

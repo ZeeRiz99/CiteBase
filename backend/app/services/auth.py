@@ -153,26 +153,27 @@ class AuthService:
             "/verify-email",
         )
 
-    # ---- use cases -----------------------------------------------------------------------
-
-    async def register(
+    async def _create_account(
         self,
         *,
         full_name: str,
         email: str,
         password: str,
         workspace_name: str | None,
-        client: ClientInfo,
-    ) -> IssuedTokens:
-        await enforce(self.limiter, f"register:ip:{client.ip}", 5, 3600)
+        verified: bool = False,
+    ) -> tuple[User, uuid.UUID]:
+        """User, workspace, owner membership and default collection (flushed, not committed)."""
         email = normalize_email(email)
         if await users_repo.get_user_by_email(self.db, email):
             raise Conflict("An account with this email already exists.", code="email_taken")
-
         user_id, workspace_id = uuid7(), uuid7()
         await set_tenant(self.db, workspace_id=workspace_id, user_id=user_id)
         user = User(
-            id=user_id, email=email, password_hash=hash_password(password), full_name=full_name
+            id=user_id,
+            email=email,
+            password_hash=hash_password(password),
+            full_name=full_name,
+            email_verified_at=users_repo.utcnow() if verified else None,
         )
         self.db.add(user)
         await self.db.flush()
@@ -188,6 +189,41 @@ class AuthService:
         await self.db.flush()
         self.db.add(Membership(workspace_id=workspace_id, user_id=user_id, role=Role.owner))
         self.db.add(Collection(workspace_id=workspace_id, name="General", is_default=True))
+        return user, workspace_id
+
+    async def create_demo_account(
+        self, *, full_name: str, email: str, password: str, workspace_name: str
+    ) -> tuple[User, uuid.UUID]:
+        """For the labeled demo seed (CLI only): a verified account, no email, no session."""
+        user, workspace_id = await self._create_account(
+            full_name=full_name,
+            email=email,
+            password=password,
+            workspace_name=workspace_name,
+            verified=True,
+        )
+        system_repo.add_audit(
+            self.db, action="seed.demo_account", workspace_id=workspace_id, actor_user_id=user.id
+        )
+        await self.db.commit()
+        return user, workspace_id
+
+    # ---- use cases -----------------------------------------------------------------------
+
+    async def register(
+        self,
+        *,
+        full_name: str,
+        email: str,
+        password: str,
+        workspace_name: str | None,
+        client: ClientInfo,
+    ) -> IssuedTokens:
+        await enforce(self.limiter, f"register:ip:{client.ip}", 5, 3600)
+        user, workspace_id = await self._create_account(
+            full_name=full_name, email=email, password=password, workspace_name=workspace_name
+        )
+        user_id = user.id
         self._queue_verification(user)
         system_repo.add_audit(
             self.db,

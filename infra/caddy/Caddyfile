@@ -1,16 +1,18 @@
 {
 	admin off
-	auto_https off
 }
 
 # One origin for the browser: the web app at /, the API at /api.
-# Production: replace ":80" with your domain to get automatic HTTPS.
-:80 {
+# SITE_ADDRESS defaults to ":80" (plain HTTP, local use). Set it to your domain
+# (e.g. SITE_ADDRESS=answers.example.com) and Caddy obtains and renews HTTPS certificates.
+{$SITE_ADDRESS::80} {
 	header {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Frame-Options "DENY"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Ignored by browsers on plain HTTP; enforces HTTPS once served over TLS.
+		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
 

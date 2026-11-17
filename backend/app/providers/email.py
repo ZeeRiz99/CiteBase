@@ -41,8 +41,9 @@ class SmtpEmailSender:
             mime,
             hostname=self.settings.smtp_host,
             port=self.settings.smtp_port,
-            username=self.settings.smtp_username,
-            password=password,
+            # Blank values (unset in .env) mean "no login", not an empty username and password.
+            username=self.settings.smtp_username or None,
+            password=password or None,
             start_tls=self.settings.smtp_starttls,
             timeout=15,
         )
