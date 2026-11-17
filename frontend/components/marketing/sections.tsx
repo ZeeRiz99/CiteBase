@@ -80,27 +80,68 @@ export function IntegrationsSection() {
   );
 }
 
-const PLANS = [
+/* Illustrative plans. "Included" lists only features that exist today; "planned" ones are labeled.
+   Plan limits are not enforced yet (docs/BACKLOG.md: plan limits and billing). */
+type Plan = {
+  name: string;
+  price: string;
+  audience: string;
+  limits: [string, string][];
+  intro?: string;
+  features: string[];
+  planned: string[];
+  cta: string;
+  featured?: boolean;
+};
+
+const PLANS: Plan[] = [
   {
-    name: "Pilot",
-    price: "Free",
-    period: "for 30 days",
-    features: ["1 workspace", "Up to 50 documents", "Cited answers and unanswered-question log", "Setup help"],
-    cta: "Start a pilot",
+    name: "Free",
+    price: "$0",
+    audience: "Try it on your own documents",
+    limits: [["Pages", "50"], ["Questions / month", "50"], ["Seats", "1"]],
+    features: [
+      "PDF, Word, Markdown and text",
+      "Cited answers with the passage highlighted",
+      'A clear "not in your documents" answer',
+    ],
+    planned: [],
+    cta: "Start free",
   },
   {
-    name: "Team",
-    price: "$49",
-    period: "per month",
-    features: ["Up to 200 documents", "2M AI tokens per month included", "Feedback and answer traces", "Email support"],
+    name: "Starter",
+    price: "$29",
+    audience: "Small businesses and internal teams",
+    limits: [["Pages", "1,000"], ["Questions / month", "2,000"], ["Seats", "3"]],
+    intro: "Everything in Free, plus",
+    features: ["Unanswered-questions log", "Answer ratings with comments", "Team roles: admin, member, viewer"],
+    planned: ["Website chat widget"],
+    cta: "Get started",
+  },
+  {
+    name: "Growth",
+    price: "$79",
+    audience: "Growing companies and support desks",
+    limits: [["Pages", "5,000"], ["Questions / month", "10,000"], ["Seats", "10"]],
+    intro: "Everything in Starter, plus",
+    features: ['"Why this answer?" traces', "Usage dashboard", "Suggested questions from your documents"],
+    planned: ["OCR for scanned PDFs", "Q&A export"],
     cta: "Get started",
     featured: true,
   },
   {
     name: "Business",
-    price: "Custom",
-    period: "",
-    features: ["Your domain and branding", "Your own AI provider keys", "Quality evaluation on your documents", "Priority support"],
+    price: "$199",
+    audience: "Larger teams and agencies",
+    limits: [["Pages", "25,000"], ["Questions / month", "35,000"], ["Seats", "25"]],
+    intro: "Everything in Growth, plus",
+    features: [
+      "Your domain and branding",
+      "Your own AI provider keys",
+      "Quality evaluation on your documents",
+      "Priority support",
+    ],
+    planned: ["API and webhooks"],
     cta: "Talk to us",
   },
 ];
@@ -118,42 +159,76 @@ export function PricingSection() {
             </span>
           </p>
         </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.name}
-              className={
-                plan.featured
-                  ? "grid gap-5 rounded-2xl bg-navy-900 p-6 text-white shadow-overlay"
-                  : "grid gap-5 rounded-2xl bg-white p-6 shadow-soft"
-              }
-            >
-              <div>
-                <h3 className={plan.featured ? "font-semibold text-teal-100" : "font-semibold text-navy-900"}>{plan.name}</h3>
-                <p className="mt-2">
-                  <span className="text-4xl font-semibold">{plan.price}</span>{" "}
-                  <span className={plan.featured ? "text-navy-100" : "text-slate-subtle"}>{plan.period}</span>
-                </p>
-              </div>
-              <ul className="grid content-start gap-2 text-sm">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex gap-2">
-                    <Check className={plan.featured ? "size-4 shrink-0 text-teal-500" : "size-4 shrink-0 text-teal-700"} aria-hidden />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                asChild
-                size="lg"
-                variant={plan.featured ? "default" : "outline"}
-                className={plan.featured ? "mt-auto h-10 bg-teal-500 text-navy-950 hover:bg-teal-500/90" : "mt-auto h-10"}
+        <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {PLANS.map((plan) => {
+            const dark = plan.featured === true;
+            return (
+              <div
+                key={plan.name}
+                className={
+                  dark
+                    ? "flex flex-col gap-5 rounded-2xl bg-navy-900 p-6 text-white shadow-overlay"
+                    : "flex flex-col gap-5 rounded-2xl bg-white p-6 shadow-soft"
+                }
               >
-                <Link href="/register">{plan.cta}</Link>
-              </Button>
-            </div>
-          ))}
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className={dark ? "font-semibold text-teal-100" : "font-semibold text-navy-900"}>{plan.name}</h3>
+                    {dark ? (
+                      <span className="rounded-full bg-teal-500 px-2.5 py-0.5 text-xs font-semibold text-navy-950">Recommended</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2">
+                    <span className="text-4xl font-semibold">{plan.price}</span>{" "}
+                    <span className={dark ? "text-navy-100" : "text-slate-subtle"}>per month</span>
+                  </p>
+                  <p className={dark ? "mt-1 text-sm text-navy-100 lg:min-h-10" : "mt-1 text-sm text-slate-subtle lg:min-h-10"}>
+                    {plan.audience}
+                  </p>
+                </div>
+                <dl className={dark ? "grid gap-1.5 border-y border-white/15 py-4 text-sm" : "grid gap-1.5 border-y py-4 text-sm"}>
+                  {plan.limits.map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-2">
+                      <dt className={dark ? "text-navy-100" : "text-slate-subtle"}>{label}</dt>
+                      <dd className="font-semibold">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="grid content-start gap-2 text-sm">
+                  {plan.intro ? <p className={dark ? "font-medium text-teal-100" : "font-medium text-navy-900"}>{plan.intro}</p> : null}
+                  <ul className="grid gap-2">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex gap-2">
+                        <Check className={dark ? "mt-0.5 size-4 shrink-0 text-teal-500" : "mt-0.5 size-4 shrink-0 text-teal-700"} aria-hidden />
+                        {f}
+                      </li>
+                    ))}
+                    {plan.planned.map((f) => (
+                      <li key={f} className={dark ? "flex gap-2 text-navy-100" : "flex gap-2 text-slate-subtle"}>
+                        <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                        <span>
+                          {f} <span className="text-xs font-medium">(planned)</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <Button
+                  asChild
+                  size="lg"
+                  variant={dark ? "default" : "outline"}
+                  className={dark ? "mt-auto h-10 bg-teal-500 text-navy-950 hover:bg-teal-500/90" : "mt-auto h-10"}
+                >
+                  <Link href="/register">{plan.cta}</Link>
+                </Button>
+              </div>
+            );
+          })}
         </div>
+        <p className="mt-8 text-center text-sm text-slate-body">
+          <Server className="mr-1.5 inline size-4 align-text-bottom text-teal-700" aria-hidden />
+          Need it on your own server? We can install a private copy for your team.
+        </p>
       </div>
     </section>
   );
