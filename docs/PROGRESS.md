@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Text recognition (OCR): complete on branch `feature/ocr`, awaiting approval.** `v1.1.0` (backlog pass 1) is on `main` and GitHub. Next: merge OCR as `v1.2.0`, then pass 2 or another V2 feature in the owner's order (`docs/BACKLOG.md`).
+**Released `v1.2.0` (text recognition) on `main` and GitHub; CI green.** Next: pass 2 or another V2 feature, in the owner's order (`docs/BACKLOG.md`).
 
 ## Text recognition (OCR), 2026-11-17
 
