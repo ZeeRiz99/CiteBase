@@ -397,7 +397,7 @@ export function sourceLocation(
     const parts = value.split(SEPARATOR);
     return parts[0]?.trim().toLowerCase() === title ? parts.slice(1).join(SEPARATOR) : value;
   };
-  const location = stripTitle(source.location) || "Opening section";
+  const location = stripTitle(source.location); // "" when it only repeated the title
   const section = source.section_title ? stripTitle(source.section_title) : "";
   return section && section !== location && !location.includes(section) ? `${location} · ${section}` : location;
 }

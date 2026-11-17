@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMe } from "@/lib/auth";
 import { useDocuments, type DocumentItem, type StatusFilter } from "@/lib/documents";
 import { fileTypeLabel, formatBytes, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,8 @@ export function KnowledgeBaseView() {
   const q = useDebounced(search.trim(), 300);
   const { data, error, isPending, isFetching, refetch } = useDocuments({ q, status, page });
 
+  const { data: me } = useMe();
+  const isViewer = me?.role === "viewer"; // viewers read and ask; uploads need member (API-enforced)
   const limits = data?.limits;
   const atLimit = limits ? limits.document_count >= limits.max_documents : false;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
@@ -57,7 +60,7 @@ export function KnowledgeBaseView() {
         </div>
       </div>
 
-      <UploadDropzone limits={limits} disabled={atLimit} />
+      {isViewer ? null : <UploadDropzone limits={limits} disabled={atLimit} />}
       {atLimit ? (
         <p className="text-sm text-warning" role="status">
           You have reached your workspace limit. Delete a document to upload another.

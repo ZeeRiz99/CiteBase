@@ -17,6 +17,11 @@ async function closeSheet(page: Page) {
 
 test("register, upload, ask, verify the citation, refuse off-topic", async ({ page }) => {
   const email = `e2e-${Date.now()}@example.com`;
+  // Production builds send a Content-Security-Policy; any violation fails the test.
+  const cspViolations: string[] = [];
+  page.on("console", (message) => {
+    if (/Content Security Policy/i.test(message.text())) cspViolations.push(message.text());
+  });
 
   // 1. Create an account (lands on the dashboard).
   await page.goto("/register");
@@ -93,4 +98,6 @@ test("register, upload, ask, verify the citation, refuse off-topic", async ({ pa
   // 8. The refusal is waiting in the admin's unanswered list.
   await page.goto("/unanswered");
   await expect(page.getByRole("cell", { name: "Who won the football world cup in 1998?" })).toBeVisible();
+
+  expect(cspViolations).toEqual([]);
 });

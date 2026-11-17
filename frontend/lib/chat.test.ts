@@ -54,9 +54,7 @@ describe("sourceLocation", () => {
   it("drops a leading heading that only repeats the document title", () => {
     const doc = { document_title: "Employee Handbook" };
     const leave = "Employee Handbook › Leave";
-    expect(sourceLocation({ ...doc, location: "Employee Handbook", section_title: "Employee Handbook" })).toBe(
-      "Opening section",
-    );
+    expect(sourceLocation({ ...doc, location: "Employee Handbook", section_title: "Employee Handbook" })).toBe("");
     expect(sourceLocation({ ...doc, location: leave, section_title: leave })).toBe("Leave");
     expect(sourceLocation({ ...doc, location: "Page 2", section_title: leave })).toBe("Page 2 · Leave");
     expect(sourceLocation({ ...doc, location: "Leave policy", section_title: "Leave policy" })).toBe("Leave policy");

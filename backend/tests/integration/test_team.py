@@ -80,7 +80,7 @@ async def test_invite_email_accept_and_join_with_role(
     assert (await api.get("/api/v1/workspace/invitations")).json() == []
 
 
-async def test_viewer_cannot_upload_but_can_read(api: Api, api_b: Api) -> None:
+async def test_viewer_reads_and_asks_but_cannot_change_documents(api: Api, api_b: Api) -> None:
     await api.register()
     await api.upload("Policy.txt", b"Returns are accepted within thirty days of delivery.")
     await accept(api_b, token_of((await invite(api, "v@example.com", "viewer"))["link"]))
@@ -90,6 +90,18 @@ async def test_viewer_cannot_upload_but_can_read(api: Api, api_b: Api) -> None:
     upload = await api_b.upload("Mine.txt", b"Viewers may not add documents to the workspace.")
     assert upload.status_code == 403
     assert (await api_b.get("/api/v1/workspace/members")).status_code == 403
+    doc_id = (await api_b.get("/api/v1/documents")).json()["items"][0]["id"]
+    assert (await api_b.delete(f"/api/v1/documents/{doc_id}")).status_code == 403
+
+    # Viewers ask questions (an "ask-only" seat).
+    conversation = await api_b.post("/api/v1/conversations", {"title": "Returns"})
+    assert conversation.status_code == 201
+    asked = await api_b.post(
+        f"/api/v1/conversations/{conversation.json()['id']}/messages",
+        {"question": "How long do returns take?"},
+    )
+    assert asked.status_code == 200
+    assert "event: done" in asked.text
 
 
 async def test_role_hierarchy(api: Api, api_b: Api, api_c: Api) -> None:

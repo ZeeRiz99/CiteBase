@@ -31,7 +31,6 @@ from app.services.suggestions import suggested_questions
 router = APIRouter(tags=["chat"])
 
 Viewer = Annotated[CurrentContext, Depends(require_role(Role.viewer))]
-Member = Annotated[CurrentContext, Depends(require_role(Role.member))]
 Admin = Annotated[CurrentContext, Depends(require_role(Role.admin))]
 
 
@@ -60,7 +59,7 @@ async def list_conversations(
 
 @router.post("/conversations", status_code=status.HTTP_201_CREATED)
 async def create_conversation(
-    request: Request, body: ConversationCreate, ctx: Member, db: DbDep, settings: SettingsDep
+    request: Request, body: ConversationCreate, ctx: Viewer, db: DbDep, settings: SettingsDep
 ) -> ConversationOut:
     conversation = await _chat(request, db, settings, ctx).create_conversation(body.title)
     return ConversationOut.build(conversation)
@@ -100,7 +99,7 @@ async def ask(
     request: Request,
     conversation_id: uuid.UUID,
     body: AskRequest,
-    ctx: Member,
+    ctx: Viewer,
     db: DbDep,
     settings: SettingsDep,
 ) -> EventStreamResponse:
@@ -112,7 +111,7 @@ async def ask(
 
 @router.post("/messages/{message_id}/regenerate", response_class=EventStreamResponse)
 async def regenerate(
-    request: Request, message_id: uuid.UUID, ctx: Member, db: DbDep, settings: SettingsDep
+    request: Request, message_id: uuid.UUID, ctx: Viewer, db: DbDep, settings: SettingsDep
 ) -> EventStreamResponse:
     service = _chat(request, db, settings, ctx)
     turn = await service.prepare_regenerate(message_id)
@@ -124,7 +123,7 @@ async def give_feedback(
     request: Request,
     message_id: uuid.UUID,
     body: FeedbackRequest,
-    ctx: Member,
+    ctx: Viewer,
     db: DbDep,
     settings: SettingsDep,
 ) -> MessageResponse:
@@ -134,7 +133,7 @@ async def give_feedback(
 
 @router.delete("/messages/{message_id}/feedback")
 async def clear_feedback(
-    request: Request, message_id: uuid.UUID, ctx: Member, db: DbDep, settings: SettingsDep
+    request: Request, message_id: uuid.UUID, ctx: Viewer, db: DbDep, settings: SettingsDep
 ) -> MessageResponse:
     await _chat(request, db, settings, ctx).clear_feedback(message_id)
     return MessageResponse(message="Feedback removed.")

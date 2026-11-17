@@ -76,7 +76,7 @@ export function ConversationList({
             {q ? "No conversations match." : "Your conversations will appear here."}
           </p>
         ) : (
-          <ul className="grid gap-0.5">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
             {conversations.data.map((c) => (
               <li key={c.id} className="group relative">
                 {editing === c.id ? (
@@ -112,7 +112,7 @@ export function ConversationList({
                           variant="ghost"
                           size="icon-xs"
                           aria-label={`Actions for ${c.title}`}
-                          className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
+                          className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100 pointer-coarse:opacity-100"
                         >
                           <MoreHorizontal aria-hidden />
                         </Button>
