@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = 30
     email_verification_ttl_hours: int = 24
     password_reset_ttl_minutes: int = 60
+    invitation_ttl_days: int = 7
     cookie_secure: bool = True
 
     email_backend: Literal["smtp", "memory"] = "smtp"

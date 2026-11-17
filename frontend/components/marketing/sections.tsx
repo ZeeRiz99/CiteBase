@@ -114,7 +114,7 @@ const PLANS: Plan[] = [
     audience: "Small businesses and internal teams",
     limits: [["Pages", "1,000"], ["Questions / month", "2,000"], ["Seats", "3"]],
     intro: "Everything in Free, plus",
-    features: ["Unanswered-questions log", "Answer ratings with comments", "Team roles: admin, member, viewer"],
+    features: ["Unanswered-questions log", "Answer ratings with comments", "Team invites with admin, member and viewer roles"],
     planned: ["Website chat widget"],
     cta: "Get started",
   },

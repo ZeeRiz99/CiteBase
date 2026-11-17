@@ -95,6 +95,36 @@ async def reindex(email: str) -> None:
     print(f"Queued {len(versions)} document(s) for re-indexing in {workspace.name}.")
 
 
+async def token_limit(email: str, value: str) -> None:
+    """Set a workspace's monthly AI token allowance: a number, 0 for unlimited, or "default"."""
+    if value != "default" and not (value.isdigit() and int(value) <= 2_000_000_000):
+        sys.exit('Use a whole number of tokens, 0 for unlimited, or "default".')
+    settings = get_settings()
+    engine = create_engine(settings, null_pool=True)
+    maker = create_sessionmaker(engine)
+    async with maker() as db:
+        workspace = await _workspace_for(db, email)
+        workspace.monthly_token_limit = None if value == "default" else int(value)
+        system_repo.add_audit(
+            db,
+            action="workspace.token_limit_set",
+            workspace_id=workspace.id,
+            details={"monthly_token_limit": workspace.monthly_token_limit},
+        )
+        await db.commit()
+        name = workspace.name
+    await engine.dispose()
+    if value == "default":
+        print(
+            f"{name}: uses the deployment default "
+            f"({settings.monthly_token_limit:,} tokens; 0 = unlimited)."
+        )
+    elif value == "0":
+        print(f"{name}: unlimited AI tokens per month.")
+    else:
+        print(f"{name}: {int(value):,} AI tokens per month.")
+
+
 def demo_files(samples: Path) -> list[Path]:
     if not samples.is_dir():
         sys.exit(f"Sample folder not found: {samples} (mount ./samples, see README)")
@@ -141,6 +171,9 @@ def main() -> None:
     p_ask.add_argument("--trace", action="store_true", help="print retrieval and gate details")
     p_re = sub.add_parser("reindex", help="re-chunk and re-embed all documents of a workspace")
     p_re.add_argument("--email", required=True)
+    p_tl = sub.add_parser("token-limit", help="set a workspace's monthly AI token allowance")
+    p_tl.add_argument("tokens", help='a number, 0 for unlimited, or "default"')
+    p_tl.add_argument("--email", required=True, help="a member of the workspace")
     args = parser.parse_args()
 
     settings = get_settings()
@@ -149,6 +182,8 @@ def main() -> None:
         asyncio.run(ask(args.question, args.email, args.trace))
     elif args.command == "seed":
         asyncio.run(seed(demo_files(args.samples), args.email, args.password))
+    elif args.command == "token-limit":
+        asyncio.run(token_limit(args.email, args.tokens))
     else:
         asyncio.run(reindex(args.email))
 

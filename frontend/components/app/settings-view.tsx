@@ -12,7 +12,8 @@ import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { meQueryKey, useMe, type Me } from "@/lib/auth";
+import { TeamCard, WorkspaceCard } from "@/components/app/workspace-settings";
+import { hasRole, meQueryKey, useMe, type Me } from "@/lib/auth";
 import { applyServerErrors } from "@/lib/form-errors";
 import { changePasswordSchema, profileSchema, type ChangePasswordValues, type ProfileValues } from "@/lib/schemas";
 
@@ -23,11 +24,16 @@ export function SettingsView() {
     <div className="grid gap-8">
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold text-navy-900 sm:text-3xl">Settings</h1>
-        <p className="text-muted-foreground">Manage your profile and sign-in security.</p>
+        <p className="text-muted-foreground">
+          {hasRole(me.role, "admin")
+            ? "Manage your profile, sign-in security, workspace and team."
+            : "Manage your profile and sign-in security."}
+        </p>
       </div>
       <ProfileCard me={me} />
       <PasswordCard />
       <WorkspaceCard me={me} />
+      {hasRole(me.role, "admin") ? <TeamCard me={me} /> : null}
     </div>
   );
 }
@@ -117,29 +123,6 @@ function PasswordCard() {
           </Button>
         </CardFooter>
       </form>
-    </Card>
-  );
-}
-
-function WorkspaceCard({ me }: { me: Me }) {
-  return (
-    <Card className="shadow-soft">
-      <CardHeader>
-        <CardTitle className="text-base">Workspace</CardTitle>
-        <CardDescription>Team members and roles arrive in a later release.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <dl className="grid max-w-md gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">Name</dt>
-            <dd className="font-medium text-navy-900">{me.workspace.name}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Workspace ID</dt>
-            <dd className="font-mono text-xs text-navy-900">{me.workspace.slug}</dd>
-          </div>
-        </dl>
-      </CardContent>
     </Card>
   );
 }

@@ -9,7 +9,7 @@ import re
 import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 from sqlalchemy.exc import IntegrityError
@@ -33,6 +33,7 @@ from app.models import (
     AuthSession,
     AuthToken,
     Collection,
+    Invitation,
     Membership,
     Role,
     TokenPurpose,
@@ -65,6 +66,15 @@ class WrongPassword(AppError):
 class ClientInfo:
     ip: str | None
     user_agent: str | None
+
+
+@dataclass(frozen=True)
+class InvitationPreview:
+    email: str
+    role: Role
+    workspace_name: str
+    inviter_name: str | None
+    expires_at: datetime
 
 
 @dataclass(frozen=True)
@@ -406,6 +416,88 @@ class AuthService:
             ip_hash=hash_ip(self.settings, client.ip),
         )
         await self.db.commit()
+
+    # ---- invitations ---------------------------------------------------------------------
+
+    async def _pending_invitation(self, token: str) -> tuple[Invitation, Workspace]:
+        """Resolve an invite link. Sets the tenant to the invitation's workspace."""
+        token_hash = hash_token(token)
+        workspace_id = await ws_repo.invitation_workspace(self.db, token_hash)
+        if workspace_id is None:
+            raise InvalidToken()
+        await set_tenant(self.db, workspace_id=workspace_id, user_id=None)
+        invitation = await ws_repo.get_invitation_by_hash(self.db, token_hash)
+        workspace = await ws_repo.get_workspace(self.db, workspace_id)
+        if (
+            invitation is None
+            or workspace is None
+            or invitation.accepted_at is not None
+            or invitation.revoked_at is not None
+            or invitation.expires_at <= users_repo.utcnow()
+        ):
+            raise InvalidToken()
+        return invitation, workspace
+
+    async def preview_invitation(self, *, token: str, client: ClientInfo) -> InvitationPreview:
+        await enforce(self.limiter, f"invite-preview:ip:{client.ip}", 30, 3600)
+        invitation, workspace = await self._pending_invitation(token)
+        inviter = (
+            await users_repo.get_user(self.db, invitation.invited_by_id)
+            if invitation.invited_by_id
+            else None
+        )
+        return InvitationPreview(
+            email=invitation.email,
+            role=invitation.role,
+            workspace_name=workspace.name,
+            inviter_name=inviter.full_name if inviter else None,
+            expires_at=invitation.expires_at,
+        )
+
+    async def accept_invitation(
+        self, *, token: str, full_name: str, password: str, client: ClientInfo
+    ) -> IssuedTokens:
+        """Create the invited account in the inviting workspace and sign it in."""
+        await enforce(self.limiter, f"invite-accept:ip:{client.ip}", 10, 3600)
+        invitation, workspace = await self._pending_invitation(token)
+        invitation = await ws_repo.lock_invitation(self.db, invitation.id) or invitation
+        if invitation.accepted_at is not None:
+            raise InvalidToken()
+        email = normalize_email(invitation.email)
+        if await users_repo.get_user_by_email(self.db, email):
+            raise Conflict("An account with this email already exists.", code="email_taken")
+        now = users_repo.utcnow()
+        user = User(
+            id=uuid7(),
+            email=email,
+            password_hash=hash_password(password),
+            full_name=full_name,
+            email_verified_at=now,  # the emailed link proves the address
+        )
+        self.db.add(user)
+        await self.db.flush()
+        await set_tenant(self.db, workspace_id=workspace.id, user_id=user.id)
+        self.db.add(Membership(workspace_id=workspace.id, user_id=user.id, role=invitation.role))
+        invitation.accepted_at = now
+        user.last_login_at = now
+        system_repo.add_audit(
+            self.db,
+            action="team.invitation_accepted",
+            workspace_id=workspace.id,
+            actor_user_id=user.id,
+            target_type="invitation",
+            target_id=str(invitation.id),
+            ip_hash=hash_ip(self.settings, client.ip),
+        )
+        tokens = self._issue_tokens(user.id, workspace.id, client)
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:  # the same email registered concurrently
+            await self.db.rollback()
+            raise Conflict(
+                "An account with this email already exists.", code="email_taken"
+            ) from exc
+        return tokens
 
     async def change_password(
         self,

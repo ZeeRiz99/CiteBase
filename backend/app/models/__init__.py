@@ -25,7 +25,7 @@ from app.models.document import (
 from app.models.embedding import ChunkEmbedding, EmbeddingProfileRow
 from app.models.system import AuditLog, DomainEvent, Job, JobStatus
 from app.models.user import AuthSession, AuthToken, TokenPurpose, User
-from app.models.workspace import ROLE_RANK, Collection, Membership, Role, Workspace
+from app.models.workspace import ROLE_RANK, Collection, Invitation, Membership, Role, Workspace
 
 __all__ = [
     "IN_PROGRESS",
@@ -47,6 +47,7 @@ __all__ = [
     "EvidenceStrength",
     "Feedback",
     "FeedbackRating",
+    "Invitation",
     "Job",
     "JobStatus",
     "Membership",

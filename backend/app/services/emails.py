@@ -10,6 +10,7 @@ from app.providers.email import OutgoingEmail
 
 VERIFY_EMAIL = "verify_email"
 RESET_PASSWORD = "reset_password"  # noqa: S105 - template name, not a secret
+INVITATION = "invitation"
 
 
 def _layout(settings: Settings, heading: str, body_html: str, link: str, cta: str) -> str:
@@ -69,5 +70,30 @@ def render(template: str, context: dict[str, Any], settings: Settings) -> Outgoi
             "Reset password",
         )
         return OutgoingEmail(to=to, subject=f"Reset your {product} password", text=text, html=html)
+
+    if template == INVITATION:
+        # Names are user input and end up in the Subject header: collapse all whitespace.
+        inviter = " ".join(str(context.get("inviter") or "A teammate").split())
+        workspace = " ".join(str(context.get("workspace") or "a workspace").split())
+        days = settings.invitation_ttl_days
+        text = (
+            f"Hi,\n\n{inviter} invited you to join {workspace} on {product}:\n{link}\n\n"
+            f"This invitation expires in {days} days. If you were not expecting it, ignore this email.\n"
+        )
+        html = _layout(
+            settings,
+            f"Join {workspace}",
+            f"{escape(inviter)} invited you to join <strong>{escape(workspace)}</strong> on "
+            f"{escape(product)}. Choose a password to accept. This invitation expires in {days} days. "
+            "If you were not expecting it, you can ignore this email.",
+            link,
+            "Accept invitation",
+        )
+        return OutgoingEmail(
+            to=to,
+            subject=f"{inviter} invited you to {workspace} on {product}",
+            text=text,
+            html=html,
+        )
 
     raise ValueError(f"Unknown email template: {template}")
