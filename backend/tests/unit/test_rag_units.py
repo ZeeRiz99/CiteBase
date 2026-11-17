@@ -11,7 +11,7 @@ from app.rag.citations import is_refusal, validate
 from app.rag.constants import REFUSAL_TEXT
 from app.rag.gate import compute_signals, decide
 from app.rag.profiles import PROFILES, GateThresholds
-from app.rag.prompting import PromptSource, render_sources, user_message
+from app.rag.prompting import TRAILER, PromptSource, render_sources, user_message
 from app.rag.retrieval import fuse
 
 THR = GateThresholds(vec_hi=0.75, vec_lo=0.55, kw_coverage=0.5)
@@ -91,7 +91,8 @@ class TestPrompting:
     def test_user_message_wraps_sources(self) -> None:
         message = user_message("How long?", [PromptSource(1, "Doc", "page 1", "Text.")])
         assert message.startswith("Question: How long?")
-        assert "<sources>" in message and message.endswith("</sources>")
+        assert "<sources>" in message and "</sources>" in message
+        assert message.endswith(TRAILER)  # the table rule is restated after the sources
 
 
 def test_rrf_rewards_agreement_between_searches() -> None:

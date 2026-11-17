@@ -27,28 +27,32 @@ Screenshots show the labeled demo workspace (fictional company, `python -m app.c
   regenerate.
 - **Verification**: hover a citation for the passage, click it to open the page with the passage
   highlighted; feedback per answer; an admin trace with scores, thresholds, tokens and cost.
+- **Teams**: invite people by email as admin, member or viewer (ask-only); admins manage roles below
+  their own; removing someone ends their sessions at once.
 - **Operations**: unanswered-questions queue, per-workspace monthly AI token limit, per-user rate
-  limits, usage and question statistics on the dashboard, audit log.
+  limits, usage and question statistics on the dashboard, audit log, scripted daily backups.
 - **Security**: Argon2id passwords, httpOnly cookie sessions with rotating refresh tokens, CSRF
-  protection, and every workspace isolated by Postgres row-level security. Document text is treated
-  as data, never as instructions.
+  protection, a Content-Security-Policy, and every workspace isolated by Postgres row-level
+  security. Document text is treated as data, never as instructions.
 - **White label**: product name, tagline and colors come from configuration; one deployment per
   organization.
 
 ## Measured quality
 
-Produced by the evaluation harness (`backend/evals/`) on a fictional 5-document corpus with 39 golden
-questions, including off-topic, near-miss and prompt-injection cases. Full reports:
+Produced by the evaluation harness (`backend/evals/`) on a fictional 6-document corpus with 40 golden
+questions, including off-topic, near-miss, prompt-injection and ambiguous-table cases. Full reports:
 [docs/evals/](docs/evals/README.md). The demo corpus is small, so treat these numbers as a smoke test;
 the harness can be run on a client's own documents.
 
 | Configuration | Recall@1 | Refusal accuracy | Citation precision | Faithfulness* | Injection resistance* | Median latency |
 |---|---|---|---|---|---|---|
-| Gemini embeddings, 400-token chunks (default) | 100% | 100% | 100% | 100% | 100% | 1.4 s |
-| Gemini embeddings, 200-token chunks | 92.9% | 100% | 97.1% | 96.4% | 100% | 1.3 s |
-| Local CPU embeddings (no API cost) | 100% | 97.4% | 100% | 100% | 100% | 0.9 s |
+| Gemini embeddings, 400-token chunks (default; 2026-11-17, prompt `answer-v2`) | 100% | 100% | 100% | 100% | 100% | 2.0 s |
+| Gemini embeddings, 200-token chunks (2026-11-15, prompt `answer-v1`) | 92.9% | 100% | 97.1% | 96.4% | 100% | 1.3 s |
+| Local CPU embeddings, no API cost (2026-11-15, prompt `answer-v1`) | 100% | 97.4% | 100% | 100% | 100% | 0.9 s |
 
-\* LLM-judged, approximate. Answers use `gemini-3.5-flash-lite`; a full evaluation run costs about USD 0.03.
+\* LLM-judged, approximate. Answers use `gemini-3.5-flash-lite` on the free tier; latency includes
+rate-limit waits (the 2026-11-17 run hit several; the earlier default run measured 1.4 s). A full
+evaluation run costs about USD 0.03.
 
 ## How a question is answered
 
@@ -161,24 +165,45 @@ docker compose run --rm --no-deps web npm run check
 docker compose logs -f api worker
 ```
 
-### End-to-end test
+### End-to-end tests
 
-One Playwright golden-path test (register, upload, ask, open the cited passage, PDF highlight, rate,
-off-topic refusal, unanswered queue) runs against the running stack in a small Chromium image, so no
-browser is installed locally. It uses the configured AI provider (a fraction of a US cent per run).
+Three Playwright tests run against the running stack in a small Chromium image, so no browser is
+installed locally. They use the configured AI provider (a fraction of a US cent per run).
+
+| Test | Covers |
+|---|---|
+| `golden-path` | Register, upload, ask, open the cited passage, PDF highlight, rate, off-topic refusal, unanswered queue; fails on any Content-Security-Policy violation |
+| `team` | Owner invites a viewer, the viewer joins through the link, the owner changes the role |
+| `mobile-chat` | Chat at 390 px: tabs, answer, sources, highlighted passage, no sideways scrolling |
 
 ```bash
 docker build -t citebase-e2e:1.64.1 -f frontend/e2e.Dockerfile frontend   # once
 docker run --rm --network host --ipc=host \
   -v "$PWD":/repo -v citebase_web_node_modules:/repo/frontend/node_modules -w /repo/frontend \
-  citebase-e2e:1.64.1 npx playwright test golden-path
+  citebase-e2e:1.64.1 npx playwright test golden-path team mobile-chat
 ```
+
+Sign-ups are limited to 5 per hour per address; after several runs, `docker compose restart api`
+resets the in-memory limits.
+
+### Developing on Windows (WSL2)
+
+- Keep Docker inside WSL2 and the repo on a Windows drive if you edit it with Windows tools. The dev
+  servers then watch files by polling: edits reload, but a **newly created file** is sometimes missed
+  until `docker compose restart web api worker`.
+- WSL shuts down when idle by default, which stops the stack. To keep it running, add
+  `vmIdleTimeout=-1` under `[wsl2]` in `%UserProfile%\.wslconfig` (this machine uses that), or
+  just run `wsl docker compose up -d` again.
+- The WSL virtual disk grows but does not shrink after `docker system prune`. Keep free space on
+  the drive that holds it, or compact it occasionally (`wsl --shutdown`, then
+  `Optimize-VHD` or `diskpart`'s `compact vdisk`).
 
 ### Command line and evaluations
 
 ```bash
 docker compose exec api python -m app.cli ask "How long do returns take?" --email you@example.com --trace
 docker compose exec api python -m app.cli reindex --email you@example.com   # after changing models
+docker compose exec api python -m app.cli token-limit 5000000 --email you@example.com   # AI allowance
 
 # Optional local embeddings (no API cost, multilingual, about 720 MB RAM); then use embedding profile 1
 docker compose --profile local-embeddings up -d embedder
@@ -196,5 +221,6 @@ docker compose run --rm --no-deps -u root -v ./docs/evals:/out api \
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment, backups, upgrades |
 | [docs/evals/](docs/evals/README.md) | Evaluation reports |
 | [docs/ASSET_BRIEF.md](docs/ASSET_BRIEF.md) | Brand tokens and the assets a designer should produce |
+| [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md) | Open-source dependencies and their licenses |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | What was built, phase by phase, with verification evidence |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | Known limits and follow-ups |

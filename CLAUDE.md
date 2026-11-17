@@ -67,6 +67,12 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 - (Phase 5) Clean-machine checks use a separate project name (`-p citebase-clean`) so the dev volumes are untouched; `down -v` there also deletes that project's `web_node_modules`.
 - (Phase 5) Demo data: `docker compose run --rm -v ./samples:/samples:ro api python -m app.cli seed [--password ...]`. Screenshots: `tests/e2e/screenshots.spec.ts` (README) and `tests/e2e/portfolio.spec.ts` (freelance portfolio, output in gitignored `portfolio/`); run them against a production build and look at every image.
 - (Phase 4) E2E: build `frontend/e2e.Dockerfile` (Chromium only; mcr.microsoft.com pulls time out here) and run `npx playwright test` in it with `--network host`, mounting the `citebase_web_node_modules` volume (README). Set `E2E_SCREENSHOTS=<dir>` to save review screenshots and look at them.
+- (Backlog pass) The polling dev servers often miss **new** files (new routes 404, "module not found"): `docker compose restart api worker web` after adding files, before blaming the code.
+- (Backlog pass) Repeated e2e runs hit the sign-up limit (5/hour/IP, "Too many requests"); `docker compose restart api` resets the in-memory limiter.
+- (Backlog pass) To test the production web build on the dev stack: `docker compose -f compose.yaml build web && docker compose -f compose.yaml up -d --no-deps web`, run the e2e tests, then `docker compose up -d --no-deps web` to go back to the dev server.
+- (Backlog pass) Do not edit repo files with Windows Python (`python` in Git Bash): it writes CRLF. Use the Edit tool or `wsl python3`.
+- (Backlog pass) Before claiming a feature on the landing/pricing page, check it end to end in the app (team seats were advertised before invitations existed).
+- (Backlog pass) Prompt rules for Flash-Lite with minimal thinking: abstract rules get ignored; a worked example plus a one-line restatement after the sources works. Verify with `app.cli ask` on the demo workspace, then the eval harness.
 
 ## Multi-tenancy and security (non-negotiable)
 
@@ -101,4 +107,4 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 
 ## Scope guard
 
-V1 only until V1 is tagged. V2 (teams, reranker, analytics, widget, S3, Redis, dark mode) and V3 (webhooks, n8n, Drive, notifications, escalation, billing) are designed for but not built early.
+V1 is tagged (`v1.0.0`, 2026-11-17). Basic teams (invitations, roles) shipped in backlog pass 1 because the pricing page promised seats. Everything else in V2 (multi-workspace accounts, reranker, analytics, widget, S3, Redis, dark mode) and V3 (webhooks, n8n, Drive, notifications, escalation, billing) waits for the owner's priority; `docs/BACKLOG.md` lists it.
