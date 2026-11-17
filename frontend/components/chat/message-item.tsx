@@ -94,6 +94,8 @@ export function AssistantMessage({
   const { phase } = answer;
   const live = phase === "searching" || phase === "streaming" || phase === "verifying";
   const cited = answer.sources.filter((s) => s.cited).length;
+  // Evidence describes the retrieved passages; next to a refusal it would read as a contradiction.
+  const evidence = phase === "refused" ? null : answer.evidence;
 
   return (
     <article
@@ -103,9 +105,9 @@ export function AssistantMessage({
         selected && "border-teal-500/50",
       )}
     >
-      {answer.evidence || phase === "stopped" || phase === "verifying" ? (
+      {evidence || phase === "stopped" || phase === "verifying" ? (
         <div className="flex flex-wrap items-center gap-2">
-          {answer.evidence ? <EvidenceBadge evidence={answer.evidence} /> : null}
+          {evidence ? <EvidenceBadge evidence={evidence} /> : null}
           {phase === "verifying" ? (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" role="status">
               <Loader2 className="size-3 animate-spin" aria-hidden /> Checking citations…
