@@ -70,7 +70,8 @@ Full design: `docs/ARCHITECTURE.md`. Status and next step: `docs/PROGRESS.md`. *
 - (Backlog pass) The polling dev servers often miss **new** files (new routes 404, "module not found"): `docker compose restart api worker web` after adding files, before blaming the code.
 - (Backlog pass) Repeated e2e runs hit the sign-up limit (5/hour/IP, "Too many requests"); `docker compose restart api` resets the in-memory limiter.
 - (Backlog pass) To test the production web build on the dev stack: `docker compose -f compose.yaml build web && docker compose -f compose.yaml up -d --no-deps web`, run the e2e tests, then `docker compose up -d --no-deps web` to go back to the dev server.
-- (Backlog pass) Do not edit repo files with Windows Python (`python` in Git Bash): it writes CRLF. Use the Edit tool or `wsl python3`.
+- (Backlog pass) Do not edit repo files with Windows Python (`python` in Git Bash): it writes CRLF. Use the Edit tool.
+- (OCR) A `wsl python3 - <<'EOF'` heredoc sent from Git Bash loses one level of backslashes (`"\\n"` arrives as a real newline, `b"\\x89"` as a raw byte). Never use it for text containing backslashes; use the Edit tool, or `cat > file <<'EOF'` in Git Bash, then syntax-check.
 - (Backlog pass) Before claiming a feature on the landing/pricing page, check it end to end in the app (team seats were advertised before invitations existed).
 - (Backlog pass) Prompt rules for Flash-Lite with minimal thinking: abstract rules get ignored; a worked example plus a one-line restatement after the sources works. Verify with `app.cli ask` on the demo workspace, then the eval harness.
 

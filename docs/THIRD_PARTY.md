@@ -77,6 +77,13 @@ generator), vitest 5.0.5 (MIT), @vitejs/plugin-react 5.2.0 (MIT), jsdom 30.1.3 (
 **Font:** Inter, loaded through `next/font/google` and served from your own domain (SIL Open Font
 License 1.1).
 
+## System packages
+
+| Package | Version | License | Used for |
+|---|---|---|---|
+| Tesseract OCR (`tesseract-ocr`, Debian bookworm) with English data (`tesseract-ocr-eng`) | 5.3.0 | Apache-2.0 | Text recognition for scanned PDFs and images; runs as a separate program |
+| Pillow (already a pdfplumber dependency) | 13.0.0 | MIT-CMU (HPND) | Reading images, rendering scans |
+
 ## Container images
 
 | Image | License of the main software |

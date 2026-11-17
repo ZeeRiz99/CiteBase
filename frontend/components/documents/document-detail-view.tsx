@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, FileText, RotateCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, RotateCw, ScanText } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isApiError } from "@/lib/api";
-import { IN_PROGRESS, useChunks, useDocument, type DocumentDetail } from "@/lib/documents";
+import { IN_PROGRESS, LOW_OCR_CONFIDENCE, useChunks, useDocument, type DocumentDetail, type Version } from "@/lib/documents";
 import { fileTypeLabel, formatBytes, formatDateTime } from "@/lib/format";
 
 export function DocumentDetailView({ id }: { id: string }) {
@@ -45,7 +45,7 @@ export function DocumentDetailView({ id }: { id: string }) {
           <div className="grid min-w-0 gap-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="truncate text-2xl font-semibold text-navy-900 sm:text-3xl">{doc.title}</h1>
-              <StatusBadge status={v.status} />
+              <StatusBadge status={v.status} code={v.error_code} />
             </div>
             <p className="text-sm text-muted-foreground">
               {v.original_filename} · {fileTypeLabel(v.file_ext)} · {formatBytes(v.size_bytes)}
@@ -59,13 +59,22 @@ export function DocumentDetailView({ id }: { id: string }) {
       {v.status === "failed" || v.status === "needs_ocr" ? (
         <Alert variant={v.status === "failed" ? "destructive" : "default"} className={v.status === "needs_ocr" ? "border-amber-200 bg-amber-50" : undefined}>
           <AlertTriangle aria-hidden />
-          <AlertTitle>{v.status === "failed" ? "Processing failed" : "Text recognition needed"}</AlertTitle>
+          <AlertTitle>
+            {v.status === "failed"
+              ? "Processing failed"
+              : v.error_code === "ocr_no_text"
+                ? "No readable text found"
+                : v.error_code === "ocr_too_many_pages"
+                  ? "Too many pages for text recognition"
+                  : "Text recognition needed"}
+          </AlertTitle>
           <AlertDescription>
             {v.error_message}
             {doc.has_current_version ? " The previous version is still being used for answers." : ""}
           </AlertDescription>
         </Alert>
       ) : null}
+      {v.status === "indexed" && v.ocr_pages > 0 ? <OcrNotice version={v} /> : null}
       {IN_PROGRESS.has(v.status) && doc.has_current_version ? (
         <Alert>
           <AlertTitle>A new version is processing</AlertTitle>
@@ -121,7 +130,7 @@ function VersionsCard({ doc }: { doc: DocumentDetail }) {
               {version.is_current ? (
                 <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">Live</span>
               ) : null}
-              <StatusBadge status={version.status} />
+              <StatusBadge status={version.status} code={version.error_code} />
               <a
                 href={`/api/v1/documents/${doc.id}/file?version_id=${version.id}`}
                 className="text-xs font-medium text-teal-700 hover:underline"
@@ -214,5 +223,23 @@ function DetailSkeleton() {
         <Skeleton className="h-40 lg:col-span-2" />
       </div>
     </div>
+  );
+}
+
+function OcrNotice({ version }: { version: Version }) {
+  const low = version.ocr_confidence !== null && version.ocr_confidence < LOW_OCR_CONFIDENCE;
+  const pages = version.ocr_pages === 1 ? "1 page" : `${version.ocr_pages} pages`;
+  return (
+    <Alert className={low ? "border-amber-200 bg-amber-50" : undefined}>
+      <ScanText aria-hidden />
+      <AlertTitle>Text recognized from a scan</AlertTitle>
+      <AlertDescription>
+        The text of {pages} was read with text recognition (OCR)
+        {version.ocr_confidence !== null ? `, average confidence ${Math.round(version.ocr_confidence)}%` : ""}.
+        {low
+          ? " Confidence is low, so some words may be misread and answers may miss them. A sharper scan (300 DPI or more) helps."
+          : " Check important figures against the original."}
+      </AlertDescription>
+    </Alert>
   );
 }

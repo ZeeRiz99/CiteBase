@@ -131,6 +131,20 @@ docker compose -f compose.yaml -f compose.prod.yaml --profile local-embeddings u
 Set `DEFAULT_EMBEDDING_PROFILE=1` before creating workspaces. The model (about 120 MB) downloads on
 first start; the service needs about 1 GB of RAM.
 
+**Text recognition (OCR).** Scanned PDFs, scanned pages inside normal PDFs, and PNG/JPEG photos are
+read with Tesseract inside the worker: on your server, at no AI cost, a few seconds per page.
+
+| Setting | Default | Notes |
+|---|---|---|
+| `OCR_ENABLED` | `true` | `false` flags scans as "Needs OCR" instead of reading them |
+| `TESSERACT_LANGS` | `eng` | Languages installed when the image is built, space-separated Tesseract codes (`eng deu fra ara urd`) |
+| `OCR_LANGUAGES` | `eng` | Languages used for recognition, the same codes joined with `+` (`eng+deu`) |
+| `OCR_MAX_PAGES` | `100` | Longer scans are flagged "Scan too long"; split them into smaller files |
+
+After changing `TESSERACT_LANGS`, rebuild: `docker compose up -d --build api worker`. Recognition
+quality depends on the scan: 300 DPI, straight pages and good contrast work best. The document page
+shows the average recognition confidence and warns below 70%.
+
 **Provider rate limits.** Free AI tiers allow only a few requests per minute. CiteBase retries
 briefly when the provider says "too many requests", but answers slow down and indexing large
 document sets takes longer. Use a paid tier for client deployments and set a spending limit in the
@@ -224,7 +238,9 @@ cannot raise it themselves.
 
 - One API instance per deployment: the request rate limiter lives in memory. Do not scale the
   `api` service to several replicas yet. Restarting the API also resets the limits.
-- No OCR: scanned PDFs are detected and flagged "Needs OCR", not indexed.
+- Text recognition (OCR) is English by default, limited to 100 pages per scanned file, and takes a
+  few seconds per page. Passages read from a scan are shown as text next to the page image; they are
+  not marked on the image itself.
 - One workspace per account: people who already have an account cannot be invited to another
   workspace. Document-level permissions are not available; every member sees every document.
 - Plan limits shown on the pricing page (pages, questions, seats) are not enforced; only the monthly

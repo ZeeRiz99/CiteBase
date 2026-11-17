@@ -13,8 +13,23 @@ const STATUS: Record<DocumentStatus, { label: string; className: string; icon: t
   needs_ocr: { label: "Needs OCR", className: "bg-amber-50 text-amber-800 ring-amber-200", icon: ScanText },
 };
 
-export function StatusBadge({ status, className }: { status: DocumentStatus; className?: string }) {
-  const s = STATUS[status] ?? { label: status, className: "bg-muted", icon: AlertTriangle };
+// "needs_ocr" covers three cases; the error code says which.
+const OCR_LABELS: Record<string, string> = {
+  ocr_no_text: "Unreadable scan",
+  ocr_too_many_pages: "Scan too long",
+};
+
+export function StatusBadge({
+  status,
+  code,
+  className,
+}: {
+  status: DocumentStatus;
+  code?: string | null;
+  className?: string;
+}) {
+  const base = STATUS[status] ?? { label: status, className: "bg-muted", icon: AlertTriangle };
+  const s = status === "needs_ocr" && code && OCR_LABELS[code] ? { ...base, label: OCR_LABELS[code] } : base;
   const Icon = s.icon;
   return (
     <span
@@ -30,6 +45,7 @@ export function StatusBadge({ status, className }: { status: DocumentStatus; cla
   );
 }
 
-export function statusLabel(status: DocumentStatus): string {
+export function statusLabel(status: DocumentStatus, code?: string | null): string {
+  if (status === "needs_ocr" && code && OCR_LABELS[code]) return OCR_LABELS[code];
   return STATUS[status]?.label ?? status;
 }

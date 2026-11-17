@@ -21,7 +21,8 @@ Screenshots show the labeled demo workspace (fictional company, `python -m app.c
 ## What it does
 
 - **Knowledge base**: PDF, Word, Markdown and text uploads with type checks by content, isolated
-  parsing, versions, soft delete and purge. Scanned PDFs are detected and flagged "Needs OCR".
+  parsing, versions, soft delete and purge. Scanned PDFs, scanned pages and PNG/JPEG photos are read
+  with text recognition (Tesseract OCR, on your server), with the recognition confidence shown.
 - **Answers with citations**: hybrid search (pgvector + full text), a relevance gate before the model,
   streaming answers whose `[n]` citations are validated on the server, follow-up questions, Stop and
   regenerate.
@@ -128,7 +129,8 @@ docker compose run --rm -v ./samples:/samples:ro api python -m app.cli seed
 ```
 
 It prints a login (`demo@example.com`) and a one-time password. Within a minute the sample documents
-show **Ready** (the scanned PDF shows **Needs OCR**). Open **Chat** and ask, for example, "How long do
+show **Ready**; the scanned notice and the photographed delivery note are read with text
+recognition and show an **OCR** tag. Open **Chat** and ask, for example, "How long do
 I have to return an item?", then click a citation. Ask something the documents do not cover and
 CiteBase says so; it then appears under **Unanswered**.
 
@@ -167,7 +169,7 @@ docker compose logs -f api worker
 
 ### End-to-end tests
 
-Three Playwright tests run against the running stack in a small Chromium image, so no browser is
+Four Playwright tests run against the running stack in a small Chromium image, so no browser is
 installed locally. They use the configured AI provider (a fraction of a US cent per run).
 
 | Test | Covers |
@@ -175,12 +177,13 @@ installed locally. They use the configured AI provider (a fraction of a US cent 
 | `golden-path` | Register, upload, ask, open the cited passage, PDF highlight, rate, off-topic refusal, unanswered queue; fails on any Content-Security-Policy violation |
 | `team` | Owner invites a viewer, the viewer joins through the link, the owner changes the role |
 | `mobile-chat` | Chat at 390 px: tabs, answer, sources, highlighted passage, no sideways scrolling |
+| `ocr` | A scanned PDF and a photo become searchable through text recognition; answers cite them; the viewer shows the scan or image with the recognized passage |
 
 ```bash
 docker build -t citebase-e2e:1.64.1 -f frontend/e2e.Dockerfile frontend   # once
 docker run --rm --network host --ipc=host \
   -v "$PWD":/repo -v citebase_web_node_modules:/repo/frontend/node_modules -w /repo/frontend \
-  citebase-e2e:1.64.1 npx playwright test golden-path team mobile-chat
+  citebase-e2e:1.64.1 npx playwright test golden-path team mobile-chat ocr
 ```
 
 Sign-ups are limited to 5 per hour per address; after several runs, `docker compose restart api`

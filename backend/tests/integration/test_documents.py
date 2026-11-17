@@ -96,11 +96,13 @@ async def test_pdf_metadata_and_section_titles(
 async def test_scanned_pdf_is_flagged_not_indexed(
     api: Api, mailbox: Mailbox, signed_in: dict[str, Any]
 ) -> None:
+    # Gray bars only: text recognition runs and finds nothing readable.
     detail = await upload_and_index(api, mailbox, "Scan.pdf", factory.scanned_pdf())
     latest = detail["latest"]
     assert latest["status"] == "needs_ocr"
+    assert latest["error_code"] == "ocr_no_text"
     assert latest["chunk_count"] == 0
-    assert "OCR" in latest["error_message"]
+    assert "Text recognition found no readable text" in latest["error_message"]
     assert detail["has_current_version"] is False
     retry = await api.post(f"{DOCS}/{detail['id']}/retry")
     assert retry.status_code == 409
@@ -196,7 +198,15 @@ async def test_list_filters_and_limits(
     await upload_and_index(api, mailbox, "Scan.pdf", factory.scanned_pdf())
     listing = (await api.get(DOCS)).json()
     assert listing["total"] == 2
-    assert listing["limits"]["allowed_extensions"] == [".docx", ".md", ".pdf", ".txt"]
+    assert listing["limits"]["allowed_extensions"] == [
+        ".docx",
+        ".jpeg",
+        ".jpg",
+        ".md",
+        ".pdf",
+        ".png",
+        ".txt",
+    ]
     assert listing["limits"]["document_count"] == 2
     assert [d["title"] for d in (await api.get(f"{DOCS}?status=attention")).json()["items"]] == [
         "Scan"

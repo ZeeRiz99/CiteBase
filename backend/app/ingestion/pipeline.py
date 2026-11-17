@@ -13,15 +13,18 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import uuid
+from pathlib import Path
 from typing import Any
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.db.session import set_tenant
 from app.ingestion.chunking import ChunkDraft, ChunkingConfig, chunk_pages
-from app.ingestion.extractors import ExtractionError
+from app.ingestion.extractors import Extraction, ExtractionError
 from app.ingestion.extractors.base import HEADING_SEPARATOR
+from app.ingestion.ocr import IMAGE_EXTS, OcrOptions
 from app.ingestion.runner import run_extraction
 from app.models import Document, DocumentPage, DocumentStatus, DocumentVersion, Job, Workspace
 from app.providers.embeddings import build_embedder
@@ -36,8 +39,12 @@ from app.worker.context import PermanentJobError, WorkerContext, heartbeat
 log = structlog.get_logger("ingestion")
 
 NEEDS_OCR_MESSAGE = (
-    "This PDF appears to be scanned: it has little or no selectable text. It needs text "
-    "recognition (OCR) before it can be searched, so it was not indexed."
+    "This file appears to be scanned or an image: it has little or no selectable text. Text "
+    "recognition (OCR) is turned off on this server, so it was not indexed."
+)
+OCR_NO_TEXT_MESSAGE = (
+    "Text recognition found no readable text in this file. The scan may be too faint, blurred "
+    "or low resolution. Scan it again at 300 DPI or higher and upload the new version."
 )
 RETRYING_MESSAGE = "A temporary problem interrupted processing. Retrying automatically."
 INTERNAL_MESSAGE = "Processing failed. Use Retry, and contact support if it keeps failing."
@@ -111,6 +118,83 @@ async def _mark(
     await db.commit()
 
 
+def _ocr_options(settings: Settings) -> OcrOptions:
+    return OcrOptions(
+        languages=settings.ocr_languages,
+        dpi=settings.ocr_dpi,
+        page_timeout_seconds=min(120, settings.ocr_timeout_seconds),
+    )
+
+
+def _merge(text: Extraction, ocr: Extraction) -> Extraction:
+    """Text-layer pages plus OCR pages for the pages that had no text (partially scanned PDFs)."""
+    pages = sorted([*text.pages, *ocr.pages], key=lambda p: p.number)
+    return Extraction(
+        pages=pages,
+        extractor=f"{text.extractor}+{ocr.extractor}",
+        extractor_version=text.extractor_version,
+        page_count=text.page_count,
+        needs_ocr=not pages,
+        warnings=[*text.warnings, *ocr.warnings],
+        ocr_pages=ocr.ocr_pages,
+        ocr_confidence=ocr.ocr_confidence,
+    )
+
+
+async def _read_text(ctx: WorkerContext, path: Path, ext: str) -> Extraction:
+    """Text layer first; text recognition for images, scanned PDFs and scanned pages."""
+    settings = ctx.settings
+    can_ocr = settings.ocr_enabled
+    if ext in IMAGE_EXTS:
+        if not can_ocr:
+            return Extraction(
+                pages=[], extractor="none", extractor_version="", page_count=1, needs_ocr=True
+            )
+        return await run_extraction(
+            path, ext, settings.ocr_timeout_seconds, ocr=_ocr_options(settings)
+        )
+
+    extraction = await run_extraction(path, ext, settings.extraction_timeout_seconds)
+    if ext != ".pdf" or not can_ocr or not extraction.page_count:
+        return extraction
+    return await _recognize_scanned_pages(settings, path, extraction)
+
+
+async def _recognize_scanned_pages(
+    settings: Settings, path: Path, extraction: Extraction
+) -> Extraction:
+    """OCR the pages of a PDF that have no text layer (all of them for a fully scanned file)."""
+    total = extraction.page_count or 0
+    have_text = {p.number for p in extraction.pages}
+    missing = [n for n in range(1, total + 1) if n not in have_text]
+    # Too long to recognize: a fully scanned file is flagged with the reason (_needs_ocr_reason);
+    # a mostly digital file keeps its text pages.
+    if not missing or len(missing) > settings.ocr_max_pages:
+        return extraction
+    ext = ".pdf"
+    log.info("ocr_started", pages=len(missing), of=total)
+    ocr = await run_extraction(
+        path, ext, settings.ocr_timeout_seconds, ocr=_ocr_options(settings), pages=missing
+    )
+    if extraction.needs_ocr:  # fully scanned: the text layer had nothing usable
+        return ocr
+    merged = _merge(extraction, ocr)
+    merged.warnings = [w for w in merged.warnings if "may be scanned" not in w]
+    return merged
+
+
+def _needs_ocr_reason(settings: Settings, extraction: Extraction) -> tuple[str, str]:
+    if not settings.ocr_enabled:
+        return "needs_ocr", NEEDS_OCR_MESSAGE
+    if (extraction.page_count or 0) > settings.ocr_max_pages:
+        return "ocr_too_many_pages", (
+            f"This file appears to be scanned and has {extraction.page_count} pages. Text "
+            f"recognition is limited to {settings.ocr_max_pages} pages per file, so it was not "
+            "indexed. Split it into smaller files and upload them again."
+        )
+    return "ocr_no_text", OCR_NO_TEXT_MESSAGE
+
+
 async def _extract(
     db: AsyncSession, ctx: WorkerContext, job: Job, version: DocumentVersion
 ) -> bool:
@@ -125,22 +209,23 @@ async def _extract(
     if not path.is_file():
         raise ExtractionError("file_missing", "The uploaded file is missing. Upload it again.")
     async with heartbeat(ctx, job.id):
-        extraction = await run_extraction(
-            path, version.file_ext, ctx.settings.extraction_timeout_seconds
-        )
+        extraction = await _read_text(ctx, path, version.file_ext)
 
     version.extractor = extraction.extractor
     version.extractor_version = extraction.extractor_version
+    version.ocr_pages = extraction.ocr_pages
+    version.ocr_confidence = extraction.ocr_confidence
     if extraction.page_count is not None:
         version.page_count = extraction.page_count
     if extraction.needs_ocr:
+        code, message = _needs_ocr_reason(ctx.settings, extraction)
         await db.commit()
         await _mark(
             db,
             version.id,
             DocumentStatus.needs_ocr,
-            code="needs_ocr",
-            message=NEEDS_OCR_MESSAGE,
+            code=code,
+            message=message,
             event="document.failed",
         )
         return False

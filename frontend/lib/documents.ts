@@ -26,10 +26,15 @@ export type Version = {
   error_code: string | null;
   error_message: string | null;
   chunk_count: number;
+  ocr_pages: number; // pages read by text recognition (scans, images)
+  ocr_confidence: number | null; // mean word confidence, 0-100
   is_current: boolean;
   created_at: string;
   indexed_at: string | null;
 };
+
+/** Below this mean confidence, recognized text may contain misread words. */
+export const LOW_OCR_CONFIDENCE = 70;
 
 export type DocumentItem = {
   id: string;

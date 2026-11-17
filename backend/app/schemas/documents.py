@@ -20,6 +20,8 @@ class VersionOut(BaseModel):
     error_code: str | None
     error_message: str | None
     chunk_count: int
+    ocr_pages: int  # pages read by text recognition
+    ocr_confidence: float | None  # mean word confidence 0-100
     is_current: bool
     created_at: datetime
     indexed_at: datetime | None
@@ -35,6 +37,8 @@ class VersionOut(BaseModel):
             page_count=version.page_count,
             status=version.status,
             error_code=version.error_code,
+            ocr_pages=version.ocr_pages,
+            ocr_confidence=version.ocr_confidence,
             error_message=version.error_message,
             chunk_count=version.chunk_count,
             is_current=version.id == current_id,
@@ -152,6 +156,7 @@ class ContextDocument(BaseModel):
     file_ext: str
     mime_type: str
     page_count: int | None
+    ocr_pages: int  # > 0: some text came from text recognition (scans, images)
 
 
 class ChunkContextOut(BaseModel):

@@ -2,7 +2,18 @@
 
 ## Current status
 
-**Backlog pass 1 (hardening): complete on branch `hardening/pass-1`, awaiting approval.** All build phases are closed and released as `v1.0.0` (2026-11-17). Pass 2 and the V2 features wait for the owner's priority (`docs/BACKLOG.md`).
+**Text recognition (OCR): complete on branch `feature/ocr`, awaiting approval.** `v1.1.0` (backlog pass 1) is on `main` and GitHub. Next: merge OCR as `v1.2.0`, then pass 2 or another V2 feature in the owner's order (`docs/BACKLOG.md`).
+
+## Text recognition (OCR), 2026-11-17
+
+Scanned PDFs, scanned pages inside normal PDFs, and PNG/JPEG photos are read with Tesseract 5.3.0 in the worker (separate time-limited step, only where there is no text layer); recognition confidence is stored per version (migration 0006) and shown on the document page; the source viewer shows the scan or photo with the recognized passage; upload checks for images (signature, format, 40-megapixel cap); OCR settings in Compose and `.env.example`; samples regenerated (scanned notice, photographed delivery note) from generated scans of fictional text.
+
+Evidence:
+
+- Accuracy on generated scans (tilt, noise, blur, JPEG, 200 DPI): under 3% character errors per page, mean confidence above 80% (97% shown in the app for the sample).
+- Backend: ruff, mypy, `alembic check` clean; **177 pytest tests pass** (10 new: TSV parsing, accuracy, scanned PDF, photo, mixed PDF, unreadable scan, OCR off, page limit, image validation).
+- Frontend: lint and types clean; 42 Vitest tests pass.
+- End to end (`ocr` Playwright test): both samples become Ready with an OCR tag, the confidence notice shows, "When is the returns desk at the Leeds warehouse open?" is answered "8:00 to 16:00" citing the scan, the photo question is answered "6 Summit Tents" citing the image, and both citations open the original with the passage. Screenshots reviewed.
 
 ## Completed
 

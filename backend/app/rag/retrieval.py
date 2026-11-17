@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ingestion.ocr import IMAGE_EXTS
 from app.rag.profiles import EmbeddingProfile
 
 RRF_K = 60
@@ -48,6 +49,8 @@ class Candidate:
                 if self.page_start == self.page_end
                 else (f"pages {self.page_start}-{self.page_end}")
             )
+        if self.file_ext in IMAGE_EXTS:
+            return "image"
         return self.section_title or "document"
 
 

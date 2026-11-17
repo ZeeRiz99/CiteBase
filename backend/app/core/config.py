@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     max_pdf_pages: int = Field(default=500, gt=0)
     extraction_timeout_seconds: int = Field(default=300, gt=0)
     retention_days: int = Field(default=30, ge=0)  # soft-deleted documents are purged after this
+    max_image_megapixels: int = Field(default=40, gt=0)  # PNG/JPEG uploads (decompression bombs)
+
+    # Text recognition (Tesseract) for scanned PDF pages and images.
+    ocr_enabled: bool = True
+    ocr_languages: str = "eng"  # Tesseract codes joined with "+", installed in the image
+    ocr_dpi: int = Field(default=300, ge=100, le=600)
+    ocr_max_pages: int = Field(default=100, gt=0)  # longer scans are flagged instead of recognized
+    ocr_timeout_seconds: int = Field(default=900, gt=0)  # whole document
 
     # AI providers. Keys come only from the environment; they are never logged or returned.
     gemini_api_key: SecretStr | None = None

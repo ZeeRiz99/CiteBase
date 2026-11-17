@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pypdfium2 as pdfium
+from PIL import Image
 
 from app.core.errors import AppError
 
@@ -22,6 +23,15 @@ ALLOWED_TYPES: dict[str, str] = {
     ".docx": DOCX_MIME,
     ".txt": "text/plain",
     ".md": "text/markdown",
+    # Images are read with text recognition (OCR) in the worker.
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+}
+IMAGE_SIGNATURES: dict[str, tuple[bytes, str]] = {
+    ".png": (b"\x89PNG\r\n\x1a\n", "PNG"),
+    ".jpg": (b"\xff\xd8\xff", "JPEG"),
+    ".jpeg": (b"\xff\xd8\xff", "JPEG"),
 }
 
 # Zip-bomb guards for DOCX (a DOCX is a ZIP archive).
@@ -65,7 +75,8 @@ def extension_of(filename: str) -> str:
     ext = Path(filename).suffix.lower()
     if ext not in ALLOWED_TYPES:
         raise UploadRejected(
-            "Unsupported file type. Upload a PDF, Word (.docx), Markdown (.md) or text file.",
+            "Unsupported file type. Upload a PDF, Word (.docx), Markdown (.md), text, PNG or JPEG "
+            "file.",
             code="unsupported_type",
         )
     return ext
@@ -140,13 +151,43 @@ def _check_docx(path: Path) -> None:
         raise UploadRejected("This Word document is too complex to process.", code="docx_bomb")
 
 
-def inspect_file(path: Path, ext: str, *, max_pdf_pages: int) -> FileFacts:
+def _check_image(path: Path, ext: str, max_megapixels: int) -> None:
+    """Signature, format and size only: reading the header does not decode the pixels."""
+    signature, expected = IMAGE_SIGNATURES[ext]
+    with path.open("rb") as fh:
+        if not fh.read(len(signature)) == signature:
+            raise UploadRejected(
+                f"This file is not a valid {expected} image.", code="type_mismatch"
+            )
+    try:
+        with Image.open(path) as img:
+            fmt, (width, height) = img.format, img.size
+    except (OSError, Image.DecompressionBombError) as exc:
+        raise UploadRejected(
+            "This image is damaged and cannot be read.", code="image_corrupt"
+        ) from exc
+    if fmt != expected:
+        raise UploadRejected(f"This file is not a valid {expected} image.", code="type_mismatch")
+    if width * height > max_megapixels * 1_000_000:
+        raise UploadRejected(
+            f"This image is {width} x {height} pixels. The limit is {max_megapixels} megapixels; "
+            "scan at 300 DPI or resize it.",
+            code="image_too_large",
+        )
+
+
+def inspect_file(
+    path: Path, ext: str, *, max_pdf_pages: int, max_image_megapixels: int = 40
+) -> FileFacts:
     """Verify the stored file really is what its extension claims."""
     page_count: int | None = None
     if ext == ".pdf":
         page_count = _check_pdf(path, max_pdf_pages)
     elif ext == ".docx":
         _check_docx(path)
+    elif ext in IMAGE_SIGNATURES:
+        _check_image(path, ext, max_image_megapixels)
+        page_count = 1
     else:
         text = decode_text(path.read_bytes())
         if not text.strip():

@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, REAL, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, Timestamps, UUIDPk
@@ -99,6 +99,9 @@ class DocumentVersion(UUIDPk, Timestamps, Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     extractor: Mapped[str | None] = mapped_column(String(40))
     extractor_version: Mapped[str | None] = mapped_column(String(40))
+    # Pages whose text came from text recognition, and their mean word confidence (0-100).
+    ocr_pages: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    ocr_confidence: Mapped[float | None] = mapped_column(REAL)
     chunking_config: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )

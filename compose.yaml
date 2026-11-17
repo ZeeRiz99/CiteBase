@@ -28,6 +28,9 @@ x-backend-env: &backend-env
   LLM_CHEAP_MODEL: ${LLM_CHEAP_MODEL:-gemini-3.5-flash-lite}
   DEFAULT_EMBEDDING_PROFILE: ${DEFAULT_EMBEDDING_PROFILE:-2}
   MONTHLY_TOKEN_LIMIT: ${MONTHLY_TOKEN_LIMIT:-2000000}
+  OCR_ENABLED: ${OCR_ENABLED:-true}
+  OCR_LANGUAGES: ${OCR_LANGUAGES:-eng}
+  OCR_MAX_PAGES: ${OCR_MAX_PAGES:-100}
 
 # Uploaded originals, shared by the API (writes, serves) and the worker (reads, purges).
 x-storage-volume: &storage-volume
@@ -65,7 +68,7 @@ services:
     restart: unless-stopped
 
   migrate:
-    build: { context: ./backend, target: prod }
+    build: { context: ./backend, target: prod, args: { TESSERACT_LANGS: "${TESSERACT_LANGS:-eng}" } }
     command: ["alembic", "upgrade", "head"]
     environment: *backend-env
     depends_on:
@@ -73,7 +76,7 @@ services:
     restart: "no"
 
   api:
-    build: { context: ./backend, target: prod }
+    build: { context: ./backend, target: prod, args: { TESSERACT_LANGS: "${TESSERACT_LANGS:-eng}" } }
     environment: *backend-env
     volumes: [*storage-volume]
     depends_on:
@@ -87,7 +90,7 @@ services:
     restart: unless-stopped
 
   worker:
-    build: { context: ./backend, target: prod }
+    build: { context: ./backend, target: prod, args: { TESSERACT_LANGS: "${TESSERACT_LANGS:-eng}" } }
     command: ["python", "-m", "app.worker"]
     environment: *backend-env
     volumes: [*storage-volume]

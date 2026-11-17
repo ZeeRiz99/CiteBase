@@ -124,8 +124,13 @@ const PLANS: Plan[] = [
     audience: "Growing companies and support desks",
     limits: [["Pages", "5,000"], ["Questions / month", "10,000"], ["Seats", "10"]],
     intro: "Everything in Starter, plus",
-    features: ['"Why this answer?" traces', "Usage dashboard", "Suggested questions from your documents"],
-    planned: ["OCR for scanned PDFs", "Q&A export"],
+    features: [
+      '"Why this answer?" traces',
+      "Usage dashboard",
+      "Suggested questions from your documents",
+      "Text recognition (OCR) for scans and photos",
+    ],
+    planned: ["Q&A export"],
     cta: "Get started",
     featured: true,
   },
@@ -241,7 +246,7 @@ const FAQ = [
   },
   {
     q: "Which files can I upload?",
-    a: "PDF, Word (.docx), Markdown and plain text, up to 25 MB each by default. Scanned PDFs without a text layer are detected and marked \"Needs OCR\"; text recognition for them is not included yet.",
+    a: "PDF, Word (.docx), Markdown, plain text, and scans or photos as PNG or JPEG, up to 25 MB each by default. Scanned pages are read with text recognition (OCR) on your own server, and the document page shows how confident the recognition was.",
   },
   {
     q: "Where are my documents stored?",

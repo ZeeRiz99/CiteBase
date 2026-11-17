@@ -22,5 +22,8 @@ export function formatDateTime(iso: string): string {
 }
 
 export function fileTypeLabel(ext: string): string {
-  return { ".pdf": "PDF", ".docx": "Word", ".md": "Markdown", ".txt": "Text" }[ext] ?? ext.replace(".", "").toUpperCase();
+  return { ".pdf": "PDF", ".docx": "Word", ".md": "Markdown", ".txt": "Text", ".png": "PNG image", ".jpg": "JPEG image", ".jpeg": "JPEG image" }[ext] ?? ext.replace(".", "").toUpperCase();
 }
+
+/** Uploads read with text recognition (OCR). */
+export const IMAGE_EXTS: ReadonlySet<string> = new Set([".png", ".jpg", ".jpeg"]);

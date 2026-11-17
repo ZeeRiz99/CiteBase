@@ -36,6 +36,9 @@ class Extraction:
     page_count: int | None = None
     needs_ocr: bool = False
     warnings: list[str] = field(default_factory=list)
+    # Text recognition: how many pages were read by OCR and their mean word confidence (0-100).
+    ocr_pages: int = 0
+    ocr_confidence: float | None = None
 
     @property
     def total_chars(self) -> int:

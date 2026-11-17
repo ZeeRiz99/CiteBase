@@ -695,6 +695,19 @@ docker run --rm hello-world && docker compose version
 | Backups | `infra/backup.sh`: database dump and storage archive written under temporary names then renamed, copies older than N days pruned; cron line and off-site copy in the deployment guide | A failed run can never leave a half-written file that looks like a good backup |
 | Source labels | A location that only repeats the document title is not shown | "Employee Handbook" under "Employee Handbook" read as noise |
 
+### Decisions made for text recognition (OCR)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Engine | Tesseract 5 (Debian package) called as a separate program from the extraction child process, TSV output | Runs on the client's server at no AI cost and without sending documents out; Apache-2.0; TSV gives word confidence and paragraph structure. A vision model would spend the free quota and send pages to a provider |
+| When it runs | Second, separately time-limited step (`OCR_TIMEOUT_SECONDS`, 900 s per file) only when the text layer is missing: all pages of a scanned PDF, only the blank pages of a mixed PDF, and PNG/JPEG uploads | Digital PDFs pay nothing; a hang or crash is contained like any parser |
+| Rendering | PDFium at 300 DPI (capped at 6000 px per side), grayscale; EXIF rotation applied to photos | 300 DPI is Tesseract's sweet spot; caps bound memory |
+| Limits | `OCR_MAX_PAGES` (100): longer fully scanned files are flagged "Scan too long"; images capped at 40 megapixels at upload | Predictable worker time; decompression-bomb guard |
+| Quality signal | Mean word confidence stored per version (`ocr_pages`, `ocr_confidence`, migration 0006); the document page warns below 70% | Users know when to trust recognized figures less |
+| Viewer | Scanned PDF pages show the page image with the recognized passage as text below; images show the photo plus the text. No highlight on the image itself | pdf.js has no text layer on scans; drawing word boxes is a follow-up |
+| Test data | Generated scans of fictional text (tilt, noise, blur, JPEG) so accuracy is measured exactly: under 3% character errors at 200 DPI; real internet images were not used | Known ground truth, no copyright or personal-data risk |
+| Docker layers | Tesseract installs after the Python packages in the dev and prod stages; the embedder image stays without it | Adding a language does not reinstall Python packages (a slow connection made this matter) |
+
 ## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*

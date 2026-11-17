@@ -74,7 +74,7 @@ export function UploadDropzone({ limits, disabled }: { limits: Limits | undefine
     if (!disabled) void start(Array.from(event.dataTransfer.files));
   }
 
-  const accept = limits?.allowed_extensions.join(",") ?? ".pdf,.docx,.md,.txt";
+  const accept = limits?.allowed_extensions.join(",") ?? ".pdf,.docx,.md,.txt,.png,.jpg,.jpeg";
 
   return (
     <div className="grid gap-3">
@@ -97,7 +97,7 @@ export function UploadDropzone({ limits, disabled }: { limits: Limits | undefine
         <div className="grid gap-1">
           <p className="font-medium text-navy-900">Drag and drop files here</p>
           <p className="text-sm text-muted-foreground">
-            PDF, Word, Markdown or text. Up to {limits?.max_file_mb ?? "…"} MB each.
+            PDF, Word, Markdown, text, or a scan or photo (PNG, JPEG). Up to {limits?.max_file_mb ?? "…"} MB each.
           </p>
         </div>
         <input
