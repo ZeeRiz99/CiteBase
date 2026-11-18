@@ -58,7 +58,7 @@ Evidence:
   - README quick start: build, all services healthy, `readyz` ok; `app.cli seed` created the demo workspace (5 indexed, 1 needs OCR); golden path passed.
   - Production overlay (`SITE_ADDRESS=localhost`, `ENVIRONMENT=production`): HTTP 308 to HTTPS, HSTS header, Secure cookies, API docs 404, Postgres not published, Mailpit not running, share image served with an absolute `og:image` URL; golden path passed over HTTPS on the production images.
   - Backup and restore drill from `docs/DEPLOYMENT.md`: after `down -v` and restore, the same counts (users, documents, vectors), the demo account signs in (200) and an original file downloads (200). The first attempt failed and exposed the Postgres readiness race, fixed in `compose.yaml` and the guide.
-- **Images:** 8 README screenshots (`docs/screenshots/`) and 26 portfolio images (`portfolio/`, gitignored: 12 retina screenshots, 7 framed at 2000x1500 for Upwork, 7 at 2560x1538 for Fiverr), all from the production build and the labeled demo workspace; reviewed by eye.
+- **Images:** 8 README screenshots (`docs/screenshots/`) and portfolio images (`portfolio/`, in git since v1.3.0: 17 retina screenshots, 9 framed at 2000x1500 for Upwork, 9 at 2560x1538 for Fiverr, regenerated after v1.3.0 with OCR and team screens), all from the production build and the labeled demo workspace; reviewed by eye.
 - Final test results are in the Phase 5 report (backend, frontend, audits).
 
 ## Phase 4 verification evidence

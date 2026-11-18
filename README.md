@@ -228,6 +228,7 @@ docker compose run --rm --no-deps -u root -v ./docs/evals:/out api \
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment, backups, upgrades |
 | [docs/evals/](docs/evals/README.md) | Evaluation reports |
 | [docs/ASSET_BRIEF.md](docs/ASSET_BRIEF.md) | Brand tokens and the assets a designer should produce |
+| [portfolio/](portfolio/README.md) | Portfolio and showcase images (fictional demo data) |
 | [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md) | Open-source dependencies and their licenses |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | What was built, phase by phase, with verification evidence |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | Known limits and follow-ups |

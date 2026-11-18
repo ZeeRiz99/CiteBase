@@ -13,6 +13,3 @@ storage/
 coverage/
 playwright-report/
 test-results/
-
-# Portfolio images for freelance platforms (regenerate with tests/e2e/portfolio.spec.ts)
-/portfolio/
