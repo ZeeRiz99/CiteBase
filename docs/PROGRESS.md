@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Pass 2 (accounts): complete on branch `pass-2/accounts`, awaiting approval.** `v1.2.0` (text recognition) is on `main` and GitHub. Next: merge as `v1.3.0`, then the owner's next pick (`docs/BACKLOG.md`).
+**Released `v1.3.0` (pass 2: confirmed email, email change, strong-evidence retry) on `main` and GitHub; CI green.** Next: the owner's pick from `docs/BACKLOG.md` (sessions list and account deletion, OCR follow-ups, or a V2 feature).
 
 ## Pass 2: accounts and answer reliability, 2026-11-18
 
