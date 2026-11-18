@@ -74,6 +74,7 @@ const NO_REFRESH = [
   "/api/v1/auth/forgot-password",
   "/api/v1/auth/reset-password",
   "/api/v1/auth/verify-email",
+  "/api/v1/auth/confirm-email-change",
 ];
 
 export function readCookie(name: string): string | null {

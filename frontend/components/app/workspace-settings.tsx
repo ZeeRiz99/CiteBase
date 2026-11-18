@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { ConfirmEmailNotice } from "@/components/app/confirm-email-notice";
 import { FormAlert } from "@/components/forms/form-alert";
 import { TextField } from "@/components/forms/text-field";
 import {
@@ -23,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { errorMessage, isApiError } from "@/lib/api";
-import { hasRole, type Me } from "@/lib/auth";
+import { hasRole, needsEmailConfirmation, type Me } from "@/lib/auth";
 import { applyServerErrors } from "@/lib/form-errors";
 import { inviteSchema, workspaceSchema, type InviteValues, type WorkspaceValues } from "@/lib/schemas";
 import {
@@ -141,7 +142,11 @@ export function TeamCard({ me }: { me: Me }) {
         <CardDescription>Invite people and choose what they can do. You can manage roles below your own.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-8">
-        <InviteForm roles={roles} />
+        {needsEmailConfirmation(me) ? (
+          <ConfirmEmailNotice email={me.user.email} action="invite people" />
+        ) : (
+          <InviteForm roles={roles} />
+        )}
 
         <section aria-labelledby="members-heading" className="grid gap-3">
           <h3 id="members-heading" className="text-sm font-semibold text-navy-900">

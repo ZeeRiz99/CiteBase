@@ -2,6 +2,8 @@ import path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { registerConfirmed } from "./helpers";
+
 const SAMPLES = path.resolve(__dirname, "../../../samples");
 const SHOTS = process.env.E2E_SCREENSHOTS;
 
@@ -16,12 +18,7 @@ async function ask(page: Page, question: string) {
 }
 
 test("scans and photos are read with text recognition and cited", async ({ page }) => {
-  await page.goto("/register");
-  await page.getByLabel("Your name").fill("Oscar Reader");
-  await page.getByLabel("Work email").fill(`ocr-${Date.now()}@example.com`);
-  await page.getByLabel("Password").fill("e2e-text-recognition");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await registerConfirmed(page, "Oscar Reader", `ocr-${Date.now()}@example.com`, "e2e-text-recognition");
 
   // 1. Upload an image-only PDF and a JPEG photo; both become Ready with an OCR tag.
   await page.goto("/knowledge-base");

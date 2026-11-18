@@ -11,6 +11,8 @@ from app.providers.email import OutgoingEmail
 VERIFY_EMAIL = "verify_email"
 RESET_PASSWORD = "reset_password"  # noqa: S105 - template name, not a secret
 INVITATION = "invitation"
+CHANGE_EMAIL = "change_email"  # link sent to the new address
+EMAIL_CHANGED = "email_changed"  # notice sent to the old address after the change
 
 
 def _layout(settings: Settings, heading: str, body_html: str, link: str, cta: str) -> str:
@@ -94,6 +96,46 @@ def render(template: str, context: dict[str, Any], settings: Settings) -> Outgoi
             subject=f"{inviter} invited you to {workspace} on {product}",
             text=text,
             html=html,
+        )
+
+    if template == CHANGE_EMAIL:
+        hours = settings.email_verification_ttl_hours
+        text = (
+            f"Hi {name},\n\nConfirm that you want to sign in to {product} with this address:\n"
+            f"{link}\n\nThis link expires in {hours} hours. Until you confirm, your sign-in email "
+            "stays the same. If you did not ask for this, ignore this email.\n"
+        )
+        html = _layout(
+            settings,
+            "Confirm your new email address",
+            f"Hi {escape(name)}, confirm that you want to sign in to {escape(product)} with this "
+            f"address. Until you confirm, your sign-in email stays the same. This link expires in "
+            f"{hours} hours. If you did not ask for this, you can ignore this email.",
+            link,
+            "Confirm new email",
+        )
+        return OutgoingEmail(
+            to=to, subject=f"Confirm your new email for {product}", text=text, html=html
+        )
+
+    if template == EMAIL_CHANGED:
+        new = str(context.get("new_email") or "")
+        text = (
+            f"Hi {name},\n\nThe sign-in email of your {product} account was changed to {new}.\n\n"
+            "If you did not make this change, reset your password and contact your workspace "
+            f"administrator right away:\n{link}\n"
+        )
+        html = _layout(
+            settings,
+            "Your sign-in email was changed",
+            f"Hi {escape(name)}, the sign-in email of your {escape(product)} account was changed "
+            f"to <strong>{escape(new)}</strong>. If you did not make this change, reset your "
+            "password and contact your workspace administrator right away.",
+            link,
+            "Reset password",
+        )
+        return OutgoingEmail(
+            to=to, subject=f"Your {product} sign-in email was changed", text=text, html=html
         )
 
     raise ValueError(f"Unknown email template: {template}")

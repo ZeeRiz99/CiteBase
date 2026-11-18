@@ -67,6 +67,13 @@ class MeResponse(BaseModel):
     user: UserOut
     workspace: WorkspaceOut
     role: Role
+    # True when uploads and invitations wait for a confirmed email (REQUIRE_VERIFIED_EMAIL).
+    email_verification_required: bool = True
+
+
+class ChangeEmailRequest(_Strict):
+    new_email: EmailStr
+    current_password: Annotated[str, Field(min_length=1, max_length=128)]
 
 
 class MessageResponse(BaseModel):

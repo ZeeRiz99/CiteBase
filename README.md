@@ -30,6 +30,8 @@ Screenshots show the labeled demo workspace (fictional company, `python -m app.c
   highlighted; feedback per answer; an admin trace with scores, thresholds, tokens and cost.
 - **Teams**: invite people by email as admin, member or viewer (ask-only); admins manage roles below
   their own; removing someone ends their sessions at once.
+- **Accounts**: uploads and invitations wait for a confirmed email; self-service email change with
+  a link to the new address and a notice to the old one.
 - **Operations**: unanswered-questions queue, per-workspace monthly AI token limit, per-user rate
   limits, usage and question statistics on the dashboard, audit log, scripted daily backups.
 - **Security**: Argon2id passwords, httpOnly cookie sessions with rotating refresh tokens, CSRF
@@ -169,7 +171,7 @@ docker compose logs -f api worker
 
 ### End-to-end tests
 
-Four Playwright tests run against the running stack in a small Chromium image, so no browser is
+Six Playwright tests run against the running stack in a small Chromium image, so no browser is
 installed locally. They use the configured AI provider (a fraction of a US cent per run).
 
 | Test | Covers |
@@ -177,17 +179,19 @@ installed locally. They use the configured AI provider (a fraction of a US cent 
 | `golden-path` | Register, upload, ask, open the cited passage, PDF highlight, rate, off-topic refusal, unanswered queue; fails on any Content-Security-Policy violation |
 | `team` | Owner invites a viewer, the viewer joins through the link, the owner changes the role |
 | `mobile-chat` | Chat at 390 px: tabs, answer, sources, highlighted passage, no sideways scrolling |
+| `account` | Uploads wait for a confirmed email; changing the sign-in email through the emailed link |
 | `ocr` | A scanned PDF and a photo become searchable through text recognition; answers cite them; the viewer shows the scan or image with the recognized passage |
 
 ```bash
 docker build -t citebase-e2e:1.64.1 -f frontend/e2e.Dockerfile frontend   # once
 docker run --rm --network host --ipc=host \
   -v "$PWD":/repo -v citebase_web_node_modules:/repo/frontend/node_modules -w /repo/frontend \
-  citebase-e2e:1.64.1 npx playwright test golden-path team mobile-chat ocr
+  citebase-e2e:1.64.1 npx playwright test golden-path team mobile-chat ocr account
 ```
 
-Sign-ups are limited to 5 per hour per address; after several runs, `docker compose restart api`
-resets the in-memory limits.
+The tests read confirmation and invitation emails from Mailpit (`E2E_MAILPIT_URL`, default
+`http://localhost:8025`). Sign-ups are limited to 5 per hour per address and the full set signs up
+7 times, so run `docker compose restart api` (resets the in-memory limits) between full runs.
 
 ### Developing on Windows (WSL2)
 

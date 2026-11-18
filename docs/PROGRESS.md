@@ -2,7 +2,17 @@
 
 ## Current status
 
-**Released `v1.2.0` (text recognition) on `main` and GitHub; CI green.** Next: pass 2 or another V2 feature, in the owner's order (`docs/BACKLOG.md`).
+**Pass 2 (accounts): complete on branch `pass-2/accounts`, awaiting approval.** `v1.2.0` (text recognition) is on `main` and GitHub. Next: merge as `v1.3.0`, then the owner's next pick (`docs/BACKLOG.md`).
+
+## Pass 2: accounts and answer reliability, 2026-11-18
+
+Uploads and invitations wait for a confirmed email (`REQUIRE_VERIFIED_EMAIL`, default on) with an explanation and "send a new link" where the action is blocked; self-service email change (link to the new address, notice to the old one, every session ended; migration 0007); one retry when the relevance gate rated the evidence strong but the model refused; the browser tests confirm sign-ups through Mailpit like a person would.
+
+Evidence:
+
+- Backend: ruff, mypy, `alembic check` clean (0007 upgrade and downgrade exercised); new tests for the confirmed-email rule (blocked, confirm, allowed; invited people; setting off), email change (link, notice, sessions ended, single use, wrong password, same/taken address, newer request cancels older, address taken before confirming) and the strong-evidence retry.
+- Frontend: lint and types clean; 42 Vitest tests pass.
+- End to end on the dev stack: `account` (new), `team`, `golden-path`, `mobile-chat` and `ocr` pass with confirmation required. Screenshots reviewed.
 
 ## Text recognition (OCR), 2026-11-17
 

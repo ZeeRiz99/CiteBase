@@ -95,6 +95,8 @@ def settings(tmp_path: Path) -> Settings:
         gemini_api_key=None,
         openai_api_key=None,
         anthropic_api_key=None,
+        # Most tests sign up and upload at once; tests/integration/test_verified_email.py covers it.
+        require_verified_email=False,
     )
 
 

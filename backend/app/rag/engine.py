@@ -28,6 +28,7 @@ from app.rag.profiles import EmbeddingProfile, GateThresholds
 from app.rag.prompting import (
     PROMPT_VERSION,
     RETRY_REMINDER,
+    STRONG_EVIDENCE_REMINDER,
     SYSTEM_PROMPT,
     PromptSource,
     user_message,
@@ -310,37 +311,52 @@ class RagEngine:
         timings["generate"] = (time.perf_counter() - t) * 1000
         check = validate("".join(parts), valid)
 
-        if check.is_refusal:
-            yield finish(REFUSAL_TEXT, check, "model", False)
-            return
-        if check.cited:
+        if check.cited and not check.is_refusal:
             if check.invalid:
                 yield ReplaceEvent(check.text)  # strip citations that point at nothing
             yield finish(check.text, check, None, False)
             return
+        if check.is_refusal and decision.evidence != "strong":
+            yield finish(REFUSAL_TEXT, check, "model", False)
+            return
 
-        # No valid citation and not a refusal: regenerate once with a stricter reminder.
-        t = time.perf_counter()
-        retry = await complete(
-            self.llm,
-            SYSTEM_PROMPT,
-            [
-                *messages,
-                LLMMessage("assistant", "".join(parts)),
-                LLMMessage("user", RETRY_REMINDER),
-            ],
-            params,
+        # One more attempt. A refusal despite strong evidence (small fast models occasionally
+        # refuse answerable questions) gets a "read the sources again" reminder; an answer
+        # without valid citations gets a stricter citation reminder. Citations are validated
+        # again, so a second refusal or an uncited answer stays a refusal.
+        reminder = STRONG_EVIDENCE_REMINDER if check.is_refusal else RETRY_REMINDER
+        second = await self._second_attempt(
+            messages, "".join(parts), reminder, params, valid, usage, timings
         )
-        timings["regenerate"] = (time.perf_counter() - t) * 1000
-        usage.append(replace(retry.usage, kind="regenerate"))
-        second = validate(retry.text, valid)
         if second.cited and not second.is_refusal:
             yield ReplaceEvent(second.text)
             yield finish(second.text, second, None, True)
             return
-        yield ReplaceEvent(REFUSAL_TEXT)
+        if not check.is_refusal:
+            yield ReplaceEvent(REFUSAL_TEXT)
         reason: RefusalReason = "model" if second.is_refusal else "no_valid_citation"
-        yield finish(REFUSAL_TEXT, second, reason, True)
+        yield finish(REFUSAL_TEXT, second, "model" if check.is_refusal else reason, True)
+
+    async def _second_attempt(
+        self,
+        messages: list[LLMMessage],
+        first: str,
+        reminder: str,
+        params: GenerationParams,
+        valid: set[int],
+        usage: list[LLMUsage],
+        timings: dict[str, float],
+    ) -> CitationCheck:
+        t = time.perf_counter()
+        retry = await complete(
+            self.llm,
+            SYSTEM_PROMPT,
+            [*messages, LLMMessage("assistant", first), LLMMessage("user", reminder)],
+            params,
+        )
+        timings["regenerate"] = (time.perf_counter() - t) * 1000
+        usage.append(replace(retry.usage, kind="regenerate"))
+        return validate(retry.text, valid)
 
     async def answer(self, question: str, history: Sequence[LLMMessage] = ()) -> AnswerResult:
         result: AnswerResult | None = None

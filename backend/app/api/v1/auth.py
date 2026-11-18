@@ -11,6 +11,7 @@ from app.api.cookies import (
     set_csrf_cookie,
 )
 from app.api.deps import AuthServiceDep, ClientDep, CurrentContext, CurrentDep, SettingsDep
+from app.core.config import Settings
 from app.core.errors import NotAuthenticated, error_body
 from app.core.security import decode_access_token
 from app.schemas.auth import (
@@ -29,7 +30,7 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def me_response(ctx: CurrentContext) -> MeResponse:
+def me_response(ctx: CurrentContext, settings: Settings) -> MeResponse:
     return MeResponse(
         user=UserOut(
             id=ctx.user.id,
@@ -41,6 +42,7 @@ def me_response(ctx: CurrentContext) -> MeResponse:
             id=ctx.workspace.id, name=ctx.workspace.name, slug=ctx.workspace.slug
         ),
         role=ctx.role,
+        email_verification_required=settings.require_verified_email,
     )
 
 
@@ -153,5 +155,14 @@ async def reset_password(
 
 
 @router.get("/me")
-async def me(ctx: CurrentDep) -> MeResponse:
-    return me_response(ctx)
+async def me(ctx: CurrentDep, settings: SettingsDep) -> MeResponse:
+    return me_response(ctx, settings)
+
+
+@router.post("/confirm-email-change")
+async def confirm_email_change(
+    body: TokenRequest, response: Response, service: AuthServiceDep, client: ClientDep
+) -> MessageResponse:
+    new_email = await service.confirm_email_change(token=body.token, client=client)
+    clear_auth_cookies(response)  # every session ended: sign in again with the new address
+    return MessageResponse(message=f"Your sign-in email is now {new_email}. Sign in again.")

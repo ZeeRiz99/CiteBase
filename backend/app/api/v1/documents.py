@@ -37,6 +37,7 @@ Viewer = Annotated[CurrentContext, Depends(require_role(Role.viewer))]
 Member = Annotated[CurrentContext, Depends(require_role(Role.member))]
 Admin = Annotated[CurrentContext, Depends(require_role(Role.admin))]
 Owner = Annotated[CurrentContext, Depends(require_role(Role.owner))]
+VerifiedMember = Annotated[CurrentContext, Depends(require_role(Role.member, verified=True))]
 
 
 def _service(
@@ -87,7 +88,7 @@ async def list_documents(
 @router.post("/documents", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     request: Request,
-    ctx: Member,
+    ctx: VerifiedMember,
     db: DbDep,
     settings: SettingsDep,
     file: Annotated[UploadFile, File()],
@@ -113,7 +114,7 @@ async def get_document(
 async def upload_version(
     request: Request,
     document_id: uuid.UUID,
-    ctx: Member,
+    ctx: VerifiedMember,
     db: DbDep,
     settings: SettingsDep,
     file: Annotated[UploadFile, File()],

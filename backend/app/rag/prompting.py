@@ -25,6 +25,13 @@ RETRY_REMINDER = (
     "Your previous reply had no valid citations. Answer again using only the sources, putting "
     "[n] after each factual sentence, or reply with the exact refusal sentence."
 )
+# Sent once when the relevance gate rated the evidence strong but the model refused.
+STRONG_EVIDENCE_REMINDER = (
+    "Read the sources again: they were retrieved because they closely match the question. If any "
+    "source states the answer, even in different words or only in part, answer from it with [n] "
+    "citations (rule 3 for partial answers). Reply with the exact refusal sentence only if no "
+    "source addresses the question."
+)
 
 
 @dataclass(frozen=True)

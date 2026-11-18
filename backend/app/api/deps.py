@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.cookies import ACCESS_COOKIE
 from app.core.config import Settings
-from app.core.errors import Forbidden, NotAuthenticated
+from app.core.errors import AppError, Forbidden, NotAuthenticated
 from app.core.rate_limit import RateLimiter
 from app.core.security import decode_access_token
 from app.db.session import set_tenant
@@ -101,10 +101,28 @@ async def get_current(request: Request, db: DbDep, settings: SettingsDep) -> Cur
 CurrentDep = Annotated[CurrentContext, Depends(get_current)]
 
 
-def require_role(minimum: Role) -> Callable[[CurrentContext], Awaitable[CurrentContext]]:
-    async def _check(ctx: CurrentDep) -> CurrentContext:
+class EmailNotVerified(AppError):
+    status_code = 403
+    code = "email_not_verified"
+    message = (
+        "Confirm your email address first: open the link we emailed you. You can send a new link "
+        "from the banner at the top of the page."
+    )
+
+
+def require_role(
+    minimum: Role, *, verified: bool = False
+) -> Callable[..., Awaitable[CurrentContext]]:
+    """Role check; with `verified`, also a confirmed email (when REQUIRE_VERIFIED_EMAIL is on).
+
+    Verified actions are the ones that add content or reach other people: uploads and invitations.
+    """
+
+    async def _check(ctx: CurrentDep, settings: SettingsDep) -> CurrentContext:
         if ROLE_RANK[ctx.role] < ROLE_RANK[minimum]:
             raise Forbidden()
+        if verified and settings.require_verified_email and ctx.user.email_verified_at is None:
+            raise EmailNotVerified()
         return ctx
 
     return _check
