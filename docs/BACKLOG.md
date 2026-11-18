@@ -32,13 +32,13 @@ the groups below; the original phase lists follow with each item's outcome.
 
 ### Pass 2: product gaps (proposed next, needs your go-ahead)
 
-- [ ] Account features: change email (with confirmation), list and revoke active sessions, delete
-      account (GDPR-style request).
-- [ ] Require a confirmed email before uploading or inviting (decide: on by default in production?).
+- [x] Change email with confirmation (branch `pass-2/accounts`).
+- [ ] List and revoke active sessions; delete account (GDPR-style request).
+- [x] Require a confirmed email before uploading or inviting: on by default (`REQUIRE_VERIFIED_EMAIL`).
 - [ ] Meter embedding tokens and cost (estimated with the tokenizer, labeled "estimated"); decide
       whether they count against the monthly AI allowance.
 - [ ] Generation timeout with a fallback model, after measuring latency percentiles.
-- [ ] Occasional false refusal by the answer model: once in 21 tries (2026-11-17), Flash-Lite refused "How many days do I have to return a regular item?" although the relevance gate passed with strong evidence (the same workspace then answered 10 of 10). Retry once when the gate is strong but the model refuses, and count these in the trace.
+- [x] Occasional false refusal by the answer model (retry once when the gate is strong, done): once in 21 tries (2026-11-17), Flash-Lite refused "How many days do I have to return a regular item?" although the relevance gate passed with strong evidence (the same workspace then answered 10 of 10). Retry once when the gate is strong but the model refuses, and count these in the trace.
 - [ ] Heading detection in PDFs (font size and weight) so PDF passages get section titles.
 - [ ] Deterministic CI stack for the e2e tests (fake providers), so they run on every push.
 - [ ] Settings: show this month's AI usage next to the allowance for admins.

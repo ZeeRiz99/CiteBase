@@ -11,11 +11,18 @@ import { FormAlert } from "@/components/forms/form-alert";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { api, isApiError } from "@/lib/api";
 import { TeamCard, WorkspaceCard } from "@/components/app/workspace-settings";
 import { hasRole, meQueryKey, useMe, type Me } from "@/lib/auth";
 import { applyServerErrors } from "@/lib/form-errors";
-import { changePasswordSchema, profileSchema, type ChangePasswordValues, type ProfileValues } from "@/lib/schemas";
+import {
+  changeEmailSchema,
+  changePasswordSchema,
+  profileSchema,
+  type ChangeEmailValues,
+  type ChangePasswordValues,
+  type ProfileValues,
+} from "@/lib/schemas";
 
 export function SettingsView() {
   const { data: me } = useMe();
@@ -31,6 +38,7 @@ export function SettingsView() {
         </p>
       </div>
       <ProfileCard me={me} />
+      <EmailCard me={me} />
       <PasswordCard />
       <WorkspaceCard me={me} />
       {hasRole(me.role, "admin") ? <TeamCard me={me} /> : null}
@@ -68,12 +76,72 @@ function ProfileCard({ me }: { me: Me }) {
         <CardContent className="grid max-w-md gap-4">
           <FormAlert message={formError} />
           <TextField id="full_name" label="Full name" autoComplete="name" error={errors.full_name?.message} {...form.register("full_name")} />
-          <TextField id="email" label="Email" value={me.user.email} readOnly disabled hint="Contact support to change your sign-in email." />
         </CardContent>
         <CardFooter className="mt-6 border-t pt-6">
           <Button type="submit" disabled={isSubmitting || !isDirty}>
             {isSubmitting ? <Loader2 className="animate-spin" aria-hidden /> : null}
             Save profile
+          </Button>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}
+
+function EmailCard({ me }: { me: Me }) {
+  const [formError, setFormError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const form = useForm<ChangeEmailValues>({
+    resolver: zodResolver(changeEmailSchema),
+    defaultValues: { new_email: "", current_password: "" },
+  });
+  const { errors, isSubmitting } = form.formState;
+
+  async function onSubmit(values: ChangeEmailValues) {
+    setFormError(null);
+    try {
+      await api.post("/api/v1/me/email", values);
+      setSentTo(values.new_email.trim().toLowerCase());
+      form.reset();
+    } catch (error) {
+      if (isApiError(error) && (error.code === "email_taken" || error.code === "same_email")) {
+        form.setError("new_email", { type: "server", message: error.message });
+        return;
+      }
+      if (isApiError(error) && error.code === "wrong_password") {
+        form.setError("current_password", { type: "server", message: error.message });
+        return;
+      }
+      setFormError(applyServerErrors(error, form.setError, ["new_email", "current_password"]));
+    }
+  }
+
+  return (
+    <Card id="email" className="shadow-soft scroll-mt-24">
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+        <CardHeader>
+          <CardTitle className="text-base">Sign-in email</CardTitle>
+          <CardDescription>
+            You sign in with <span className="font-medium text-navy-900">{me.user.email}</span>
+            {me.user.email_verified ? " (confirmed)." : " (not confirmed yet)."} To change it, we send a link to the
+            new address; it changes once you open that link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid max-w-md gap-4">
+          <FormAlert message={formError} />
+          {sentTo ? (
+            <p className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900" role="status">
+              We sent a confirmation link to <span className="font-medium">{sentTo}</span>. Your sign-in email stays the
+              same until you open it, then every device is signed out.
+            </p>
+          ) : null}
+          <TextField id="new_email" label="New email" type="email" autoComplete="email" error={errors.new_email?.message} {...form.register("new_email")} />
+          <TextField id="email_password" label="Current password" type="password" autoComplete="current-password" error={errors.current_password?.message} {...form.register("current_password")} />
+        </CardContent>
+        <CardFooter className="mt-6 border-t pt-6">
+          <Button type="submit" variant="outline" disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="animate-spin" aria-hidden /> : null}
+            Send confirmation link
           </Button>
         </CardFooter>
       </form>

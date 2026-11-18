@@ -31,6 +31,7 @@ x-backend-env: &backend-env
   OCR_ENABLED: ${OCR_ENABLED:-true}
   OCR_LANGUAGES: ${OCR_LANGUAGES:-eng}
   OCR_MAX_PAGES: ${OCR_MAX_PAGES:-100}
+  REQUIRE_VERIFIED_EMAIL: ${REQUIRE_VERIFIED_EMAIL:-true}
 
 # Uploaded originals, shared by the API (writes, serves) and the worker (reads, purges).
 x-storage-volume: &storage-volume

@@ -89,6 +89,15 @@ in case the email is slow. Roles:
 
 An email address that already has an account cannot be invited yet (one workspace per account).
 
+**Confirmed email first.** New accounts must open the confirmation link from their sign-up email
+before they can upload documents or invite people (they can look around and ask questions before
+that). Invited people are confirmed by their invitation link. Set `REQUIRE_VERIFIED_EMAIL=false`
+only for internal installs without working email.
+
+**Changing the sign-in email** is self-service under **Settings → Sign-in email**: CiteBase sends a
+link to the new address, switches only when it is opened, emails a notice to the old address and
+signs the account out everywhere.
+
 To save typing, put the two file names in the environment once:
 
 ```bash

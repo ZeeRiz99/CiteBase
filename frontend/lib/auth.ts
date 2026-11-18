@@ -14,7 +14,14 @@ export type Me = {
   user: { id: string; email: string; full_name: string; email_verified: boolean };
   workspace: { id: string; name: string; slug: string };
   role: Role;
+  /** Uploads and invitations wait for a confirmed email on this server. */
+  email_verification_required: boolean;
 };
+
+/** True while this account must confirm its email before uploading or inviting. */
+export function needsEmailConfirmation(me: Me | undefined): boolean {
+  return Boolean(me && me.email_verification_required && !me.user.email_verified);
+}
 
 export type Message = { message: string };
 

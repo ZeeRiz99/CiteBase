@@ -37,6 +37,7 @@ router = APIRouter(tags=["team"])
 
 Viewer = Annotated[CurrentContext, Depends(require_role(Role.viewer))]
 Admin = Annotated[CurrentContext, Depends(require_role(Role.admin))]
+VerifiedAdmin = Annotated[CurrentContext, Depends(require_role(Role.admin, verified=True))]
 
 
 def _team(request: Request, db: DbDep, settings: SettingsDep, ctx: CurrentContext) -> TeamService:
@@ -120,7 +121,7 @@ async def list_invitations(
 
 @router.post("/workspace/invitations", status_code=status.HTTP_201_CREATED)
 async def create_invitation(
-    body: InviteRequest, request: Request, ctx: Admin, db: DbDep, settings: SettingsDep
+    body: InviteRequest, request: Request, ctx: VerifiedAdmin, db: DbDep, settings: SettingsDep
 ) -> InvitationOut:
     created = await _team(request, db, settings, ctx).invite(str(body.email), Role(body.role))
     return InvitationOut.build(created.invitation, created.link)

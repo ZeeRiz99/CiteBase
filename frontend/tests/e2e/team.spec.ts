@@ -2,6 +2,8 @@ import path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { confirmEmail } from "./helpers";
+
 const SHOTS = process.env.E2E_SCREENSHOTS; // optional folder for review screenshots
 
 async function shot(page: Page, name: string) {
@@ -13,6 +15,7 @@ test("owner invites a viewer, who joins through the link", async ({ page, browse
   const ownerEmail = `owner-${stamp}@example.com`;
   const inviteeEmail = `viewer-${stamp}@example.com`;
 
+  // Before confirming the email, Settings asks for that instead of showing the invite form.
   await page.goto("/register");
   await page.getByLabel("Your name").fill("Olivia Owner");
   await page.getByLabel("Company or team (optional)").fill("Team Test Co");
@@ -20,6 +23,9 @@ test("owner invites a viewer, who joins through the link", async ({ page, browse
   await page.getByLabel("Password").fill("e2e-team-owner-password");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
+  await page.goto("/settings");
+  await expect(page.locator("#team").getByText(/Confirm your email to invite people/)).toBeVisible();
+  await confirmEmail(page, ownerEmail);
 
   // Invite from Settings; the one-time link is shown for copying.
   await page.goto("/settings");

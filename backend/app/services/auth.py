@@ -499,6 +499,103 @@ class AuthService:
             ) from exc
         return tokens
 
+    # ---- email change ----------------------------------------------------------------------
+
+    async def request_email_change(
+        self, *, user: User, workspace_id: uuid.UUID, new_email: str, password: str
+    ) -> str:
+        """Email a confirmation link to the new address. Nothing changes until it is opened."""
+        await enforce(self.limiter, f"change-email:user:{user.id}", 5, 3600)
+        if not verify_password(password, user.password_hash).valid:
+            raise WrongPassword()
+        new_email = normalize_email(new_email)
+        if new_email == normalize_email(user.email):
+            raise Conflict("That is already your sign-in email.", code="same_email")
+        if await users_repo.get_user_by_email(self.db, new_email):
+            raise Conflict("An account with this email already exists.", code="email_taken")
+        await users_repo.invalidate_tokens(self.db, user.id, TokenPurpose.change_email)
+        raw, token_hash = new_opaque_token()
+        self.db.add(
+            AuthToken(
+                user_id=user.id,
+                purpose=TokenPurpose.change_email,
+                token_hash=token_hash,
+                new_email=new_email,
+                expires_at=users_repo.utcnow()
+                + timedelta(hours=self.settings.email_verification_ttl_hours),
+            )
+        )
+        system_repo.enqueue_job(
+            self.db,
+            job_type="send_email",
+            payload={
+                "template": emails.CHANGE_EMAIL,
+                "context": {
+                    "to": new_email,
+                    "name": user.full_name,
+                    "link": self._link("/confirm-email-change", raw),
+                },
+            },
+        )
+        system_repo.add_audit(
+            self.db,
+            action="auth.email_change_requested",
+            workspace_id=workspace_id,
+            actor_user_id=user.id,
+        )
+        await self.db.commit()
+        return new_email
+
+    async def confirm_email_change(self, *, token: str, client: ClientInfo) -> str:
+        """Switch the sign-in email, tell the old address, and end every session."""
+        await enforce(self.limiter, f"confirm-email:ip:{client.ip}", 10, 3600)
+        record = await users_repo.get_valid_token(
+            self.db, hash_token(token), TokenPurpose.change_email
+        )
+        if record is None or not record.new_email:
+            raise InvalidToken()
+        user = await users_repo.get_user(self.db, record.user_id)
+        if user is None or not user.is_active:
+            raise InvalidToken()
+        new_email = normalize_email(record.new_email)
+        if await users_repo.get_user_by_email(self.db, new_email):
+            raise Conflict("An account with this email already exists.", code="email_taken")
+        old_email = user.email
+        now = users_repo.utcnow()
+        record.used_at = now
+        user.email = new_email
+        user.email_verified_at = now  # following the link proves the new inbox
+        await users_repo.invalidate_tokens(self.db, user.id, TokenPurpose.verify_email)
+        await users_repo.invalidate_tokens(self.db, user.id, TokenPurpose.reset_password)
+        await users_repo.revoke_all_sessions(self.db, user.id)
+        system_repo.enqueue_job(
+            self.db,
+            job_type="send_email",
+            payload={
+                "template": emails.EMAIL_CHANGED,
+                "context": {
+                    "to": old_email,
+                    "name": user.full_name,
+                    "new_email": new_email,
+                    "link": f"{self.settings.app_base_url.rstrip('/')}/forgot-password",
+                },
+            },
+        )
+        system_repo.add_audit(
+            self.db,
+            action="auth.email_changed",
+            actor_user_id=user.id,
+            ip_hash=hash_ip(self.settings, client.ip),
+        )
+        try:
+            await self.db.commit()
+        except IntegrityError as exc:  # the address was registered meanwhile
+            await self.db.rollback()
+            raise Conflict(
+                "An account with this email already exists.", code="email_taken"
+            ) from exc
+        return new_email
+
     async def change_password(
         self,
         *,

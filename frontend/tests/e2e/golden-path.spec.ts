@@ -2,6 +2,8 @@ import path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { registerConfirmed } from "./helpers";
+
 const SAMPLES = path.resolve(__dirname, "../../../samples");
 const SHOTS = process.env.E2E_SCREENSHOTS; // optional folder for review screenshots
 
@@ -23,13 +25,8 @@ test("register, upload, ask, verify the citation, refuse off-topic", async ({ pa
     if (/Content Security Policy/i.test(message.text())) cspViolations.push(message.text());
   });
 
-  // 1. Create an account (lands on the dashboard).
-  await page.goto("/register");
-  await page.getByLabel("Your name").fill("Erin Tester");
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("e2e-golden-path-password");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  // 1. Create an account and confirm the email from the inbox (uploads wait for it).
+  await registerConfirmed(page, "Erin Tester", email, "e2e-golden-path-password");
 
   // 2. Upload two sample documents and wait until both are indexed.
   await page.goto("/knowledge-base");

@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     extraction_timeout_seconds: int = Field(default=300, gt=0)
     retention_days: int = Field(default=30, ge=0)  # soft-deleted documents are purged after this
     max_image_megapixels: int = Field(default=40, gt=0)  # PNG/JPEG uploads (decompression bombs)
+    # Uploads and invitations need a confirmed email address (the link sent at sign-up).
+    require_verified_email: bool = True
 
     # Text recognition (Tesseract) for scanned PDF pages and images.
     ocr_enabled: bool = True

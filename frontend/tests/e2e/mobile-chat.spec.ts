@@ -2,6 +2,8 @@ import path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { registerConfirmed } from "./helpers";
+
 const SAMPLES = path.resolve(__dirname, "../../../samples");
 const SHOTS = process.env.E2E_SCREENSHOTS;
 
@@ -17,12 +19,7 @@ async function noHorizontalScroll(page: Page) {
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
 test("chat works at phone width: tabs, answer, sources, passage", async ({ page }) => {
-  await page.goto("/register");
-  await page.getByLabel("Your name").fill("Mo Bile");
-  await page.getByLabel("Work email").fill(`mobile-${Date.now()}@example.com`);
-  await page.getByLabel("Password").fill("e2e-mobile-chat-password");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await registerConfirmed(page, "Mo Bile", `mobile-${Date.now()}@example.com`, "e2e-mobile-chat-password");
 
   await page.goto("/knowledge-base");
   await page.locator('input[type="file"]').setInputFiles(path.join(SAMPLES, "Returns Policy.md"));

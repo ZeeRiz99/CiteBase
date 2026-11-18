@@ -48,10 +48,11 @@ class AuthSession(UUIDPk, Base):
 class TokenPurpose(enum.StrEnum):
     verify_email = "verify_email"
     reset_password = "reset_password"  # noqa: S105 - enum label, not a secret
+    change_email = "change_email"
 
 
 class AuthToken(UUIDPk, Base):
-    """Single-use email verification and password reset tokens (stored hashed)."""
+    """Single-use email verification, password reset and email change tokens (stored hashed)."""
 
     __tablename__ = "auth_tokens"
 
@@ -62,6 +63,7 @@ class AuthToken(UUIDPk, Base):
         Enum(TokenPurpose, name="token_purpose"), nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    new_email: Mapped[str | None] = mapped_column(CITEXT)  # change_email: the address to switch to
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

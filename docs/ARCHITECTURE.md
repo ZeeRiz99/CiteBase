@@ -708,6 +708,15 @@ docker run --rm hello-world && docker compose version
 | Test data | Generated scans of fictional text (tilt, noise, blur, JPEG) so accuracy is measured exactly: under 3% character errors at 200 DPI; real internet images were not used | Known ground truth, no copyright or personal-data risk |
 | Docker layers | Tesseract installs after the Python packages in the dev and prod stages; the embedder image stays without it | Adding a language does not reinstall Python packages (a slow connection made this matter) |
 
+### Decisions made in pass 2 (accounts)
+
+| Topic | Decision | Why |
+|---|---|---|
+| Confirmed email | `require_role(..., verified=True)` on uploads, new versions and invitations; 403 `email_not_verified`; reading and asking stay open; `REQUIRE_VERIFIED_EMAIL` (default on) and `email_verification_required` in `/auth/me` so the UI explains instead of failing | Stops fake or mistyped sign-ups from adding content or sending invitation emails from the client's domain, without blocking a first look |
+| Email change | Token purpose `change_email` with the pending address on the token (migration 0007); link to the new inbox; on confirm: switch, mark verified, invalidate other tokens, revoke every session, notice to the old address with a password-reset link | Nothing changes without proof of the new inbox; the old owner learns about a hijack attempt; stolen sessions die |
+| Strong-evidence retry | When the gate rates evidence strong but the model refuses, ask once more with a "read the sources again" reminder; citations are validated again | Flash-Lite refused an answerable question once in 21 tries; a second look fixes that without letting uncited answers through |
+| E2E email | Tests read links from Mailpit's API (`tests/e2e/helpers.ts`) | Confirmation is now part of every sign-up flow |
+
 ## 13. Questions that change the design
 
 1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*

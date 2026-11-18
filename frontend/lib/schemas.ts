@@ -49,6 +49,12 @@ export const acceptInviteSchema = z
   .object({ full_name: nameSchema, password: passwordSchema, confirm: z.string() })
   .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "Passwords do not match." });
 
+export const changeEmailSchema = z.object({
+  new_email: emailSchema,
+  current_password: z.string().min(1, "Enter your current password."),
+});
+
+export type ChangeEmailValues = z.infer<typeof changeEmailSchema>;
 export type WorkspaceValues = z.infer<typeof workspaceSchema>;
 export type InviteValues = z.infer<typeof inviteSchema>;
 export type AcceptInviteValues = z.infer<typeof acceptInviteSchema>;

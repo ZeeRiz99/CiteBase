@@ -201,6 +201,25 @@ async def test_model_refusal_is_recognised(corpus: dict[str, Any], engines: Engi
     result = await engine.answer("How many days of annual leave do new employees get?")
     assert result.refused and result.refusal_reason == "model"
     assert result.cited_numbers == []
+    # Strong evidence: the refusal was questioned once, and the second refusal stands.
+    assert result.evidence == "strong" and result.regenerated
+
+
+async def test_refusal_despite_strong_evidence_is_retried_once(
+    corpus: dict[str, Any], engines: EngineFactory
+) -> None:
+    m = corpus["me"]
+    replies = iter([REFUSAL_TEXT, "New employees get twenty days of annual leave [1]."])
+    llm = FakeLLM(responder=lambda s, msgs: next(replies))
+    engine = await engines(m["workspace"]["id"], m["user"]["id"], llm=llm)
+    events = [e async for e in engine.stream("How many days of annual leave do new employees get?")]
+    done = events[-1]
+    assert isinstance(done, DoneEvent)
+    assert len(llm.calls) == 2
+    assert "closely match the question" in llm.calls[1][1][-1].content
+    assert not done.result.refused and done.result.regenerated
+    assert done.result.cited_numbers == [1]
+    assert any(isinstance(e, ReplaceEvent) for e in events)  # the streamed refusal is replaced
 
 
 async def test_follow_up_questions_are_rewritten(
