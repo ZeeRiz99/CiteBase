@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Released `v1.3.0` (pass 2: confirmed email, email change, strong-evidence retry) on `main` and GitHub; CI green.** Next: the owner's pick from `docs/BACKLOG.md` (sessions list and account deletion, OCR follow-ups, or a V2 feature).
+**Project complete: `v1.3.0` released on `main` and GitHub (2026-11-18), CI green.** All build phases, backlog passes 1 and 2 and text recognition are done; the early design questions are closed (ARCHITECTURE section 13). Remaining items in `docs/BACKLOG.md` are optional and wait for a client need. Portfolio images: `portfolio/`.
 
 ## Pass 2: accounts and answer reliability, 2026-11-18
 
@@ -82,4 +82,4 @@ All known limits are in [`docs/BACKLOG.md`](BACKLOG.md), sorted into pass 2, V2 
 
 ## Next step
 
-**On approval:** merge `hardening/pass-1` and tag `v1.1.0`. Then pass 2 (account features, verified email before upload, embedding metering, latency fallback, PDF headings, CI e2e) or a V2 feature, in the order the owner chooses.
+None: the project is closed. To pick it up again, read `CLAUDE.md`, this file and `docs/BACKLOG.md`, start the stack with `wsl docker compose up -d`, and choose an item from the backlog.

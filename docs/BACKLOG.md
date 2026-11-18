@@ -6,6 +6,12 @@ are handled together after the last build phase, not during the phases.**
 The pass started after `v1.0.0` (2026-11-17). Every item from the phase lists is sorted into one of
 the groups below; the original phase lists follow with each item's outcome.
 
+**Project closed at `v1.3.0` (2026-11-18).** Passes 1 and 2 and OCR are released. Everything still open
+below is optional and waits for a client need or the owner's decision:
+- Done: pushed to GitHub (CI green).
+- Decided: no license for now; free Gemini tier until a real client (then billing or the client's own key).
+- Still open: confirm pricing before selling; real client documents for quality checks.
+
 ## Status of the backlog pass
 
 ### Pass 1: hardening (done, branch `hardening/pass-1`)

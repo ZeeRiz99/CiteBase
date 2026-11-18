@@ -717,9 +717,9 @@ docker run --rm hello-world && docker compose version
 | Strong-evidence retry | When the gate rates evidence strong but the model refuses, ask once more with a "read the sources again" reminder; citations are validated again | Flash-Lite refused an answerable question once in 21 tries; a second look fixes that without letting uncited answers through |
 | E2E email | Tests read links from Mailpit's API (`tests/e2e/helpers.ts`) | Confirmation is now part of every sign-up flow |
 
-## 13. Questions that change the design
+## 13. Questions that changed the design (all closed, 2026-11-18)
 
-1. **Repo location.** May I move the project into the WSL filesystem (`/home/dell/projects/citebase`), with you opening it through VS Code's WSL mode and running Claude Code inside WSL? Bind-mounted hot reload from `C:\` through WSL is slow and file watching is unreliable. *Recommended: yes.*
-2. **Languages.** Will early clients need non-English documents or questions (for example Urdu or Arabic)? If yes, the default workspace FTS config becomes `simple` with multilingual handling, and the eval set gains non-English questions. If English-first, I use `english` stemming, which is better for English recall.
-3. **Deployment model.** Will early client work be **one deployment per client** (custom branding per install) or **one shared multi-tenant SaaS** from the start? The schema supports both. The answer decides whether branding is per deployment (env config, simpler) or per workspace (database settings and UI, more work in V1).
-4. **Provider keys.** Which LLM API keys do you have for development and evals (Gemini, OpenAI, Anthropic)? I plan to calibrate and report with the cheapest capable model you can access. Without any key, Phase 3 evals can measure retrieval and refusal-gate metrics but not generation quality.
+1. **Repo location.** *Closed:* stays at `D:\Projects\citebase`; the dev servers poll for changes, and a new file sometimes needs a container restart (README, "Developing on Windows").
+2. **Languages.** *Closed as English-first:* keyword search uses `english` stemming and OCR ships with English. A client who needs other languages (for example Urdu or Arabic) gets a workspace FTS config change, extra Tesseract language packs (`TESSERACT_LANGS`, `OCR_LANGUAGES`) and non-English golden questions; revisit when such a client appears.
+3. **Deployment model.** *Closed:* one private deployment per client, branded through `.env` and build arguments. Per-workspace branding and self-serve billing stay V2 (`docs/BACKLOG.md`).
+4. **Provider keys.** *Closed:* Gemini (free tier for development; enable billing or use the client's own key in production). OpenAI and Anthropic adapters are contract-tested and need a key only if a client asks for them.
